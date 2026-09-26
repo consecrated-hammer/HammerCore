@@ -7,6 +7,12 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- Clicking the tick in a multi-select menu now chooses it; before, only the
+  label responded.
+- The first rail heading lines up with the page title.
+
 ### Added
 
 - `UI.SearchPicker` for large searchable lists and `UI.TextInput` for

@@ -201,7 +201,8 @@ function Settings:Create()
 
     -- Finish the rail before building any page: a page that fails must not
     -- leave the window without navigation.
-    local railY, previous = -56, nil
+    -- The first rail heading lines up with the page title (both 16px down).
+    local railY, previous = -16, nil
     self.dividers = {}
     for _, spec in ipairs(self.order) do
         if spec.group ~= previous then

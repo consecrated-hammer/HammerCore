@@ -355,6 +355,9 @@ function UI.MultiSelect(panel, label, hint, y, spec, width)
                 T.Surface(choice, "rail")
                 choice.check = UI.CheckButton(choice)
                 choice.check:SetPoint("LEFT", 8, 0)
+                -- The tick is drawn by a button of its own; let clicks on it
+                -- reach the row, or only the label would respond.
+                choice.check:EnableMouse(false)
                 if item.radio then choice.check:SetSize(14, 14) end
                 choice.check.Text:SetText(item.label)
                 choice.item = item

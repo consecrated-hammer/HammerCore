@@ -63,6 +63,8 @@ function methods:GetHighlightTexture() return self.highlight end
 function methods:CreateFontString() return wow.CreateRegion(self, "FontString") end
 function methods:CreateTexture() return wow.CreateRegion(self, "Texture") end
 function methods:Raise() self.raised = true end
+function methods:EnableMouse(enabled) self.mouseEnabled = enabled end
+function methods:IsMouseEnabled() return self.mouseEnabled ~= false end
 function methods:SetFrameLevel(level) self.frameLevel = level end
 function methods:GetFrameLevel() return self.frameLevel or 1 end
 function methods:SetFrameStrata(strata) self.strata = strata end

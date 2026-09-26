@@ -196,6 +196,37 @@ do
     equal(wow.LastPrint(), "TestAddon: not in combat", "the refusal is explained")
 end
 
+-- ── Multi-select menu ──────────────────────────────────────────────────────
+do
+    local HC = addon()
+    local mode = "ALWAYS"
+    local select
+    HC.Settings:NewPage({ name = "Bar" }, function(panel, y)
+        select, y = HC.UI.MultiSelect(panel, "Show", nil, y, {
+            items = {
+                { label = "Always", radio = true, get = function() return mode == "ALWAYS" end,
+                  set = function() mode = "ALWAYS" end },
+                { label = "Never", radio = true, get = function() return mode == "NEVER" end,
+                  set = function() mode = "NEVER" end },
+            },
+            summary = function() return mode end,
+        })
+        return y
+    end)
+    HC:Start()
+    HC.Settings:Show()
+    wow.Click(select)
+    local never
+    for _, frame in ipairs(wow.frames) do
+        if frame.item and frame.item.label == "Never" then never = frame end
+    end
+    equal(never.check:IsMouseEnabled(), false, "the tick passes clicks to its row")
+    wow.Click(never)
+    equal(mode, "NEVER", "clicking the row chooses it")
+    equal(select:GetText(), "NEVER", "the summary updates")
+    equal(HC.Settings.window and HC.Settings.rail ~= nil, true, "window built")
+end
+
 -- ── Minimap button ─────────────────────────────────────────────────────────
 do
     local HC, _, calls = addon()
