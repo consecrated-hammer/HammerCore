@@ -2,7 +2,7 @@
 -- (and addon tests built on it) to create frames, run scripts and inspect
 -- results under plain Lua 5.1.  Unknown widget methods are harmless no-ops.
 
-local wow = { printed = {}, frames = {}, reloads = 0, popups = {} }
+local wow = { printed = {}, frames = {}, regions = {}, reloads = 0, popups = {} }
 
 local Widget = {}
 local methods = {}
@@ -96,6 +96,7 @@ end
 
 function wow.CreateRegion(parent, kind)
     local region = setmetatable({ kind = kind, parent = parent, shown = true, scripts = {}, points = {} }, Widget)
+    wow.regions[#wow.regions + 1] = region
     return region
 end
 wow.CreateTexture = function(parent) return wow.CreateRegion(parent, "Texture") end
@@ -118,6 +119,7 @@ function wow.Install(metadata)
     metadata = metadata or {}
     wow.printed = {}
     wow.frames = {}
+    wow.regions = {}
     CreateFrame = wow.CreateFrame
     UIParent = wow.CreateFrame("Frame", "UIParent")
     Minimap = wow.CreateFrame("Frame", "Minimap")
@@ -151,6 +153,32 @@ function wow.LoadHammerCore(root, addonName, ns)
         assert(loadfile(root .. "/" .. file))(addonName, ns)
     end
     return ns
+end
+
+-- The first font string or frame showing exactly this text.
+function wow.FindText(text)
+    for _, region in ipairs(wow.regions) do
+        if region.text == text then return region end
+    end
+    for _, frame in ipairs(wow.frames) do
+        if frame.text == text then return frame end
+    end
+end
+
+-- The first button whose label (its Text font string) reads exactly this.
+function wow.FindButton(label)
+    for _, frame in ipairs(wow.frames) do
+        if frame.Text and frame.Text.text == label then return frame end
+    end
+end
+
+-- True when a region and every parent up the chain are shown.
+function wow.Visible(region)
+    while region do
+        if region.shown == false then return false end
+        region = region.parent
+    end
+    return true
 end
 
 -- Strips colour codes so assertions read like the chat line the player sees.
