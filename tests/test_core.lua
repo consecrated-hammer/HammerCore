@@ -99,11 +99,14 @@ do
     slash("minimap on")
     equal(HC.Minimap.button:IsShown(), true, "minimap on shows the button")
 
-    slash("theme classic")
-    equal(HC.State().theme, "modern", "an unavailable theme is refused")
-    equal(wow.LastPrint(), "TestAddon: Classic is not available yet", "the refusal says why")
     slash("theme")
     equal(wow.LastPrint(), "TestAddon: theme modern", "theme with no argument reports the current one")
+    slash("theme parchment")
+    equal(wow.LastPrint(), "TestAddon: unknown theme", "an unknown theme is refused")
+    slash("theme classic")
+    equal(HC.State().theme, "classic", "the classic theme can be chosen")
+    equal(wow.LastPrint(), "TestAddon: theme classic; /reload to apply", "and applies after a reload")
+    slash("theme modern")
 
     slash("reset position")
     equal(calls.resetPosition, true, "reset position runs the addon's reset")
@@ -292,6 +295,37 @@ do
     wow.Click(freedom)
     equal(chosen, "Blessing of Freedom", "choosing sets the value")
     equal(pairLeft:GetText(), "Left", "the pair shows its current choice")
+end
+
+-- ── Classic theme ──────────────────────────────────────────────────────────
+do
+    local HC, saved = addon()
+    saved.hammerCore = { theme = "classic" }
+    local checked
+    HC.Settings:NewPage({ name = "Panel" }, function(panel, y)
+        local row
+        row, y = HC.UI.Check(panel, "Enabled", nil, y, function() return true end, function() end)
+        checked = row.hcCheckbox
+        _, y = HC.UI.Slider(panel, "Size", nil, y, 1, 10, 1, function() return 5 end, function() end)
+        return y
+    end)
+    HC:Start()
+    HC.Settings:Show()
+    equal(HC.Theme.IsClassic(), true, "the saved classic theme is active")
+    equal(HC.Settings.window.backdrop.edgeFile, "Interface\\DialogFrame\\UI-DialogBox-Border",
+        "the window wears Blizzard's dialog frame")
+    equal(checked.normalTexture, "Interface\\Buttons\\UI-CheckBox-Up", "checkboxes use Blizzard's checkbox art")
+    local panelButton = false
+    for _, frame in ipairs(wow.frames) do
+        if frame.template == "UIPanelButtonTemplate" then panelButton = true end
+    end
+    equal(panelButton, true, "buttons use Blizzard's panel button")
+    local failures = {}
+    for name, err in pairs(HC.Settings.errors) do failures[#failures + 1] = name .. ": " .. err end
+    equal(table.concat(failures, "; "), "", "every standard page builds in classic")
+    HC.Settings:Show("About")
+    HC.Quiz:Start()
+    equal(HC.Quiz.frame.backdrop.edgeFile, "Interface\\DialogFrame\\UI-DialogBox-Border", "the quiz is framed too")
 end
 
 -- ── Multi-select menu ──────────────────────────────────────────────────────

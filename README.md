@@ -108,10 +108,17 @@ tokens such as `PALADIN` or `Draenei`. The client's era comes from
 
 ### Themes
 
-Modern is implemented. Classic, Blizzard's dialog look circa 2004, is
-registered but not built. All styling already goes through the theme
-layer, so Classic will be a new token set and skin rather than page
-rewrites.
+Two themes, chosen per addon on the Theme page and applied after a reload:
+
+- **Modern**, the flat slate look Salve introduced.
+- **Classic**, Blizzard's look circa 2004: dialog-framed windows,
+  tooltip-bordered cards, red panel buttons, the classic checkbox and
+  slider, and gold headings.
+
+A theme is a colour table plus optional `surfaces`: framed backdrops keyed
+by background role, used for bordered panels. `UI.Button`,
+`UI.CheckButton` and `UI.Slider` switch to Blizzard templates and art under
+Classic. Everything else follows from the colour roles.
 
 ## Tools
 

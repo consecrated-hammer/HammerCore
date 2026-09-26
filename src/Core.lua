@@ -8,7 +8,7 @@ local addonName, ns = ...
 local HC = {}
 ns.HammerCore = HC
 
-HC.VERSION = "0.1.7"
+HC.VERSION = "0.2.0"
 HC.addonName = addonName
 
 -- The one chat colour every addon uses for its name prefix.

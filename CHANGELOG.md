@@ -7,6 +7,18 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Classic theme**, Blizzard's own look circa 2004, chosen on the Theme
+  page or with `/<cmd> theme classic` and applied after a reload:
+  - windows (settings, reports, quiz) wear the dialog-box frame;
+  - cards, rows, selects and menus use tooltip borders;
+  - buttons are the red UIPanel buttons;
+  - checkboxes and sliders use Blizzard's checkbox and slider-bar art;
+  - headings and accents are gold.
+
+  Borderless fills stay flat, so layouts are unchanged.
+
 ### Fixed
 
 - Clicking the tick in a multi-select menu now chooses it; before, only the

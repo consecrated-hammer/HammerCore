@@ -35,10 +35,41 @@ Theme.registry = {
             transparent = { 0, 0, 0, 0 },
         },
     },
+    -- Blizzard's own look, circa 2004: dialog-framed windows, tooltip-bordered
+    -- cards, gold headings, red panel buttons and the classic checkbox.
     classic = {
         label = "Classic",
-        -- Designed for, not yet built.  Selecting it is refused until it is.
-        available = false,
+        available = true,
+        colours = {
+            outer = { 1, 1, 1, 1 },
+            rail = { 0.06, 0.06, 0.06, 0.92 },
+            content = { 0, 0, 0, 0.35 },
+            raised = { 0.09, 0.09, 0.09, 0.88 },
+            edge = { 0.78, 0.78, 0.78, 1 },
+            menu = { 0.04, 0.04, 0.04, 0.96 },
+            menuEdge = { 0.85, 0.85, 0.85, 1 },
+            menuActive = { 0.30, 0.24, 0.05, 0.9 },
+            accent = { 1, 0.82, 0, 1 },
+            selected = { 1, 0.82, 0, 1 },
+            muted = { 0.72, 0.72, 0.72, 1 },
+            section = { 1, 0.82, 0, 1 },
+            text = { 1, 1, 1, 1 },
+            danger = { 1, 0.32, 0.26, 1 },
+            flavour = { 0.93, 0.85, 0.66, 1 },
+            transparent = { 0, 0, 0, 0 },
+        },
+        -- Bordered surfaces use Blizzard's framed backdrops, chosen by the
+        -- background role.  Borderless fills stay flat in every theme.
+        surfaces = {
+            outer = { bg = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edge = "Interface\\DialogFrame\\UI-DialogBox-Border", edgeSize = 32, inset = 11, tile = 32 },
+            raised = { bg = "Interface\\Tooltips\\UI-Tooltip-Background",
+                edge = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 16, inset = 4, tile = 16 },
+            rail = { bg = "Interface\\Tooltips\\UI-Tooltip-Background",
+                edge = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 12, inset = 3, tile = 16 },
+            menu = { bg = "Interface\\Tooltips\\UI-Tooltip-Background",
+                edge = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 16, inset = 4, tile = 16 },
+        },
     },
 }
 
@@ -64,9 +95,25 @@ function Theme.Unpack(role)
     return c[1], c[2], c[3], c[4]
 end
 
--- A flat panel: background role plus an optional 1px border role.
+function Theme.IsClassic()
+    return select(2, Theme.Active()) == "classic"
+end
+
+-- A panel: background role plus an optional border role.  Modern draws a
+-- flat fill and a 1px line; a theme with framed surfaces swaps in its
+-- textured backdrop for bordered panels of that background role.
 function Theme.Surface(frame, background, border)
     if not frame.SetBackdrop then return frame end
+    local theme = Theme.Active()
+    local framed = border and theme.surfaces and theme.surfaces[background]
+    if framed then
+        frame:SetBackdrop({ bgFile = framed.bg, edgeFile = framed.edge, tile = true, tileSize = framed.tile,
+            edgeSize = framed.edgeSize,
+            insets = { left = framed.inset, right = framed.inset, top = framed.inset, bottom = framed.inset } })
+        frame:SetBackdropColor(Theme.Unpack(background))
+        frame:SetBackdropBorderColor(Theme.Unpack(border))
+        return frame
+    end
     frame:SetBackdrop({ bgFile = WHITE, edgeFile = border and WHITE or nil, edgeSize = border and 1 or nil })
     frame:SetBackdropColor(Theme.Unpack(background))
     if border then frame:SetBackdropBorderColor(Theme.Unpack(border)) end

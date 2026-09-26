@@ -65,18 +65,28 @@ end
 
 function UI.CheckButton(parent)
     local btn = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    btn:SetSize(18, 18)
-    T.Surface(btn, "rail", "edge")
-    btn.check = T.Fill(btn:CreateTexture(nil, "ARTWORK"), "selected")
-    btn.check:SetPoint("TOPLEFT", 2, -2)
-    btn.check:SetPoint("BOTTOMRIGHT", -2, 2)
+    if T.IsClassic() then
+        -- Blizzard's own checkbox art, the gold tick included.
+        btn:SetSize(22, 22)
+        btn:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
+        btn:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight", "ADD")
+        btn.check = btn:CreateTexture(nil, "ARTWORK")
+        btn.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
+        btn.check:SetAllPoints()
+    else
+        btn:SetSize(18, 18)
+        T.Surface(btn, "rail", "edge")
+        btn.check = T.Fill(btn:CreateTexture(nil, "ARTWORK"), "selected")
+        btn.check:SetPoint("TOPLEFT", 2, -2)
+        btn.check:SetPoint("BOTTOMRIGHT", -2, 2)
+    end
     btn.Text = UI.FontString(btn)
     btn.Text:SetPoint("LEFT", btn, "RIGHT", 8, 0)
     btn.Text:SetJustifyH("LEFT")
     btn.SetChecked = function(self, checked)
         self.checked = checked and true or false
         self.check:SetShown(self.checked)
-        T.Border(self, self.checked and "selected" or "edge")
+        if not T.IsClassic() then T.Border(self, self.checked and "selected" or "edge") end
     end
     btn.GetChecked = function(self) return self.checked end
     btn:SetChecked(false)
@@ -86,13 +96,28 @@ end
 -- Buttons keep a quiet surface so actions are visibly clickable without
 -- turning every setting into a card.  variant: nil, "primary" or "danger".
 function UI.Button(parent, width, height, variant)
-    local button = CreateFrame("Button", nil, parent, "BackdropTemplate")
-    button:SetSize(width or 160, height or 22)
-    T.Surface(button, "raised", variant == "danger" and "danger"
-        or variant == "primary" and "accent" or "edge")
-    button.Text = UI.FontString(button, "GameFontHighlight", variant == "danger" and "danger" or "text")
-    button.Text:SetAllPoints()
-    button.Text:SetJustifyH("CENTER")
+    local button
+    if T.IsClassic() then
+        -- The red panel button every 2004 options window used.
+        button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        button:SetSize(width or 160, height or 22)
+        local label = rawget(button, "Text")
+        if type(label) ~= "table" then label = button.GetFontString and button:GetFontString() end
+        if type(label) ~= "table" then
+            label = button:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+            label:SetAllPoints()
+        end
+        button.Text = label
+        if variant == "danger" then T.Text(button.Text, "danger") end
+    else
+        button = CreateFrame("Button", nil, parent, "BackdropTemplate")
+        button:SetSize(width or 160, height or 22)
+        T.Surface(button, "raised", variant == "danger" and "danger"
+            or variant == "primary" and "accent" or "edge")
+        button.Text = UI.FontString(button, "GameFontHighlight", variant == "danger" and "danger" or "text")
+        button.Text:SetAllPoints()
+        button.Text:SetJustifyH("CENTER")
+    end
     button.SetText = function(self, text)
         self.Text:SetText(text or "")
         self.text = text
@@ -249,16 +274,37 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
     s:SetMinMaxValues(minV, maxV)
     s:SetValueStep(step)
     s:SetObeyStepOnDrag(true)
-    local track = T.Fill(s:CreateTexture(nil, "BACKGROUND"), "rail")
-    track:SetPoint("LEFT", 4, 0)
-    track:SetPoint("RIGHT", -4, 0)
-    track:SetHeight(4)
-    local fill = T.Fill(s:CreateTexture(nil, "ARTWORK"), "selected")
-    fill:SetPoint("LEFT", 4, 0)
-    fill:SetHeight(4)
-    local thumb = T.Fill(s:CreateTexture(nil, "OVERLAY"), "selected")
-    thumb:SetSize(10, 10)
-    if s.SetThumbTexture then s:SetThumbTexture(thumb) end
+    local fill
+    if T.IsClassic() then
+        -- Blizzard's slider bar: a bordered groove and the gold thumb.
+        local groove = CreateFrame("Frame", nil, s, "BackdropTemplate")
+        groove:SetPoint("LEFT", 0, 0)
+        groove:SetPoint("RIGHT", 0, 0)
+        groove:SetHeight(14)
+        groove:SetFrameLevel(math.max(0, s:GetFrameLevel() - 1))
+        if groove.SetBackdrop then
+            groove:SetBackdrop({ bgFile = "Interface\\Buttons\\UI-SliderBar-Background",
+                edgeFile = "Interface\\Buttons\\UI-SliderBar-Border", tile = true, tileSize = 8, edgeSize = 8,
+                insets = { left = 3, right = 3, top = 6, bottom = 6 } })
+        end
+        local thumb = s:CreateTexture(nil, "OVERLAY")
+        thumb:SetTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+        thumb:SetSize(32, 32)
+        if s.SetThumbTexture then s:SetThumbTexture(thumb) end
+        fill = s:CreateTexture(nil, "ARTWORK")
+        fill:Hide()
+    else
+        local track = T.Fill(s:CreateTexture(nil, "BACKGROUND"), "rail")
+        track:SetPoint("LEFT", 4, 0)
+        track:SetPoint("RIGHT", -4, 0)
+        track:SetHeight(4)
+        fill = T.Fill(s:CreateTexture(nil, "ARTWORK"), "selected")
+        fill:SetPoint("LEFT", 4, 0)
+        fill:SetHeight(4)
+        local thumb = T.Fill(s:CreateTexture(nil, "OVERLAY"), "selected")
+        thumb:SetSize(10, 10)
+        if s.SetThumbTexture then s:SetThumbTexture(thumb) end
+    end
     local value = UI.FontString(row, "GameFontHighlight", "muted")
     value:SetPoint("LEFT", s, "RIGHT", 14, 0)
 
