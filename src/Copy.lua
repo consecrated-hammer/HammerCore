@@ -22,7 +22,7 @@ function Copy:Create()
     frame.title:SetPoint("TOPLEFT", 18, -16)
     local help = UI.FontString(frame, "GameFontHighlightSmall", "muted")
     help:SetPoint("TOPLEFT", frame.title, "BOTTOMLEFT", 0, -5)
-    help:SetText("Press Ctrl+C, then Escape.")
+    frame.help = help
 
     local well = CreateFrame("Frame", nil, frame, "BackdropTemplate")
     well:SetPoint("TOPLEFT", 16, -64)
@@ -52,9 +52,10 @@ function Copy:Create()
     return frame
 end
 
-function Copy:Show(title, text)
+function Copy:Show(title, text, helpText)
     local frame = self:Create()
     frame.title:SetText(title)
+    frame.help:SetText(helpText or "Press Ctrl+C, then Escape.")
     frame.edit:SetText(text or "")
     frame:Show()
     frame.edit:SetFocus()

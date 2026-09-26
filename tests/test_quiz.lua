@@ -140,12 +140,23 @@ do
 
     wow.Click(frame.share)
     wow.Click(frame.destinations.SAY)
-    equal(wow.sentMessages[#wow.sentMessages].channel, "SAY", "say shares to Say")
+    equal(#wow.sentMessages, 0, "Say never asks the addon to send chat")
+    equal(HC.Copy.frame.title:GetText(), "Share to Say", "Say opens the copy window")
+    equal(HC.Copy.frame.edit:GetText(), "/s Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+        "Say has a native chat command ready to copy")
+    equal(HC.Copy.frame.help:GetText(), "Copy, open chat, paste, then press Enter.",
+        "the copy window explains the manual send")
 
     wow.Click(frame.share)
     wow.Click(frame.destinations.PARTY)
     equal(wow.LastPrint():find("You are not in a party.", 1, true) ~= nil, true,
         "party sharing falls back to text when solo")
+
+    IsInGroup = function() return true end
+    wow.Click(frame.share)
+    wow.Click(frame.destinations.PARTY)
+    equal(HC.Copy.frame.edit:GetText(), "/p Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+        "Party has a native chat command ready to copy")
 end
 
 -- ── The hidden timer setting ───────────────────────────────────────────────
