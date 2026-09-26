@@ -110,6 +110,24 @@ local function createPage(spec, host)
         panel.hcRefreshing = false
     end
     content.hcRefreshAll = panel.hcRefreshAll
+    -- A fixed area above the scrolling content, for a live preview that must
+    -- stay in view while the settings below it scroll.
+    content.hcCreatePinned = function(height, width)
+        height = math.max(1, height or 1)
+        scroll:ClearAllPoints()
+        scroll:SetPoint("TOPLEFT", 0, contentTop - height)
+        scroll:SetPoint("BOTTOMRIGHT", -16, 10)
+        bar:ClearAllPoints()
+        bar:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -7, contentTop - height)
+        bar:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -7, 10)
+        local pinned = CreateFrame("Frame", nil, panel)
+        pinned:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, contentTop)
+        pinned:SetSize(width or UI.CONTENT_WIDTH + 20, height)
+        pinned.hcRefresh = panel.hcRefresh
+        pinned.hcRefreshAll = panel.hcRefreshAll
+        pinned.hcHeaderOwner = panel
+        return pinned
+    end
     -- Pages that relayout their own rows report their new bottom here.
     content.hcSetBottom = function(bottom)
         content:SetHeight(math.max(1, -(bottom or -1) + 16))

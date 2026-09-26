@@ -192,6 +192,7 @@ about.build = function(panel, y)
             repeat nextTip = math.random(#spec.tips) until #spec.tips == 1 or nextTip ~= last
             last = nextTip
             tip:SetText(spec.tips[nextTip])
+            return spec.tips[nextTip]
         end
         Pages.NextTip = show
         UI.OnRefresh(panel, show)

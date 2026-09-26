@@ -15,6 +15,14 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `Commands:AddAction` lists non-command actions, such as mouse clicks, in
+  help and on the Commands page.
+- `panel.hcCreatePinned(height)` keeps a live preview above a page's
+  scrolling content.
+- `UI.PageReset` restores one page's settings.
+- A legacy key can be `{ key = "old", invert = true }` for settings stored
+  the other way round.
+
 - `UI.SearchPicker` for large searchable lists and `UI.TextInput` for
   single-line text.
 - `spec.railButton` pins one action, such as a live preview, to the foot of

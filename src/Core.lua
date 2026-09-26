@@ -8,7 +8,7 @@ local addonName, ns = ...
 local HC = {}
 ns.HammerCore = HC
 
-HC.VERSION = "0.1.3"
+HC.VERSION = "0.1.4"
 HC.addonName = addonName
 
 -- The one chat colour every addon uses for its name prefix.
@@ -48,7 +48,8 @@ end
 --   savedVariable            the addon's SavedVariables global name
 --   db                       function returning the addon's live saved table
 --   icon                     texture path for the window, minimap and About
---   legacy                   { startupMessage = "oldKey", minimap = "oldKey",
+--   legacy                   { startupMessage = "oldKey", minimap = "oldKey"
+--                              or { key = "hide_minimap", invert = true },
 --                              minimapAngle = "oldKey", settingsPoint = "oldKey" }
 --   diagnostics              function returning the copyable report text
 --   status                   function returning the Troubleshooting status text
@@ -81,9 +82,14 @@ function HC.State()
     if type(db) ~= "table" then return nil end
     if type(db.hammerCore) ~= "table" then
         local state = {}
-        for key, oldKey in pairs(HC.spec.legacy or {}) do
+        -- legacy values are an old key name, or { key = "old", invert = true }
+        -- for an old setting stored the other way round (hide_minimap).
+        for key, legacy in pairs(HC.spec.legacy or {}) do
+            local oldKey = type(legacy) == "table" and legacy.key or legacy
             if db[oldKey] ~= nil then
-                state[key] = db[oldKey]
+                local value = db[oldKey]
+                if type(legacy) == "table" and legacy.invert then value = not value end
+                state[key] = value
                 db[oldKey] = nil
             end
         end

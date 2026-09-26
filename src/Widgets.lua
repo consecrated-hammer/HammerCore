@@ -571,6 +571,19 @@ function UI.PageLink(panel, y, text, page)
     return button, y - 30
 end
 
+-- A danger-styled button that restores one page's settings.
+function UI.PageReset(panel, y, reset, label)
+    local button = UI.Button(panel, 180, 22, "danger")
+    button:SetPoint("TOPLEFT", UI.PAD, y - 4)
+    button:SetText(label or "Reset page")
+    UI.AttachHint(button, label or "Reset page", "Restore the settings on this page.")
+    button:SetScript("OnClick", function()
+        reset()
+        refreshAll(panel)
+    end)
+    return button, y - 40
+end
+
 function UI.SetEnabled(control, enabled)
     if not control then return end
     if control.SetEnabled then control:SetEnabled(enabled) end

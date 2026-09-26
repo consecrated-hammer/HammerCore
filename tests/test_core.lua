@@ -196,6 +196,39 @@ do
     equal(wow.LastPrint(), "TestAddon: not in combat", "the refusal is explained")
 end
 
+-- ── Inverted legacy keys, actions, pinned areas and page resets ────────────
+do
+    local HC, saved = addon({ legacy = { minimap = { key = "hide_minimap", invert = true } } })
+    saved.hide_minimap = true
+    equal(HC.State().minimap, false, "an inverted legacy key is adopted the right way round")
+    equal(saved.hide_minimap, nil, "the inverted legacy key is removed")
+
+    HC.Commands:AddAction({ section = "Grid", usage = "Left-click a cell", help = "Apply its marker" })
+    wow.printed = {}
+    SlashCmdList.TESTADDON("help")
+    local found = false
+    for _, line in ipairs(wow.printed) do
+        if wow.Plain(line) == "  Left-click a cell - Apply its marker" then found = true end
+    end
+    equal(found, true, "actions appear in help without a slash prefix")
+    SlashCmdList.TESTADDON("left-click")
+    equal(wow.LastPrint(), "TestAddon: unknown command. Type /testaddon help for the list.", "actions are not commands")
+
+    local pinned, resetClicked, resetButton
+    HC.Settings:NewPage({ name = "Panel" }, function(panel, y)
+        pinned = panel.hcCreatePinned(120)
+        resetButton, y = HC.UI.PageReset(panel, y, function() resetClicked = true end, "Reset panel")
+        return y
+    end)
+    HC:Start()
+    HC.Settings:Show()
+    equal(pinned:GetHeight(), 120, "a pinned area is created")
+    equal(pinned.hcRefresh == HC.Settings.pages.Panel.hcRefresh, true, "the pinned area shares the page refresh")
+    wow.Click(resetButton)
+    equal(resetClicked, true, "the page reset runs")
+    equal(resetButton:GetText(), "Reset panel", "the reset button is labelled")
+end
+
 -- ── Multi-select menu ──────────────────────────────────────────────────────
 do
     local HC = addon()

@@ -29,6 +29,22 @@ function Commands:Add(entry)
     return entry
 end
 
+-- A reference entry that is not a slash command, such as a mouse action on
+-- the addon's frame.  It appears in help and on the Commands page only.
+-- action = { usage = "Left-click a cell", help = "...", section = "Grid" }
+function Commands:AddAction(action)
+    assert(type(action.usage) == "string" and type(action.help) == "string", "action needs usage and help")
+    action.section = action.section or HC.name
+    action.isAction = true
+    self.list[#self.list + 1] = action
+    local known = false
+    for _, section in ipairs(self.sections) do
+        if section == action.section then known = true end
+    end
+    if not known then self.sections[#self.sections + 1] = action.section end
+    return action
+end
+
 -- Parses "on", "off" or nothing (toggle) against the current value.
 local function onOff(args, current)
     if args == "on" then return true end
@@ -145,6 +161,7 @@ function Commands:Sections()
 end
 
 function Commands.Usage(entry)
+    if entry.isAction then return entry.usage end
     local text = HC.Command()
     if entry.name ~= "" then text = text .. " " .. entry.name end
     if entry.args then text = text .. " " .. entry.args end
