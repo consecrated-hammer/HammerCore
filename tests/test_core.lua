@@ -263,6 +263,37 @@ do
     equal(wow.LastPrint(), "TestAddon: You apply TestAddon.", "chat lines replace the tip in chat")
 end
 
+-- ── Dynamic dropdown and dropdown pair ─────────────────────────────────────
+do
+    local HC = addon()
+    local spells, chosen, rows, columns = { "Cleanse" }, "Cleanse", "LEFT", "TOP"
+    local dynamic, pairLeft
+    HC.Settings:NewPage({ name = "Actions" }, function(panel, y)
+        _, y, dynamic = HC.UI.DynamicDropdown(panel, "Spell", nil, y,
+            function() return spells, spells end,
+            function() return chosen end, function(value) chosen = value end)
+        pairLeft, _, y = HC.UI.DropdownPair(panel, "Grid flow", y,
+            { label = "Rows grow from", values = { "LEFT", "RIGHT" }, labels = { "Left", "Right" },
+              get = function() return rows end, set = function(value) rows = value end },
+            { label = "Columns grow from", values = { "TOP", "BOTTOM" }, labels = { "Top", "Bottom" },
+              get = function() return columns end, set = function(value) columns = value end })
+        return y
+    end)
+    HC:Start()
+    HC.Settings:Show()
+    equal(dynamic:GetText(), "Cleanse", "the dynamic select shows the current choice")
+    spells = { "Cleanse", "Blessing of Freedom" }
+    wow.Click(dynamic)
+    local freedom
+    for _, frame in ipairs(wow.frames) do
+        if frame.value == "Blessing of Freedom" and frame:IsShown() then freedom = frame end
+    end
+    equal(freedom ~= nil, true, "new choices appear when the menu opens")
+    wow.Click(freedom)
+    equal(chosen, "Blessing of Freedom", "choosing sets the value")
+    equal(pairLeft:GetText(), "Left", "the pair shows its current choice")
+end
+
 -- ── Multi-select menu ──────────────────────────────────────────────────────
 do
     local HC = addon()

@@ -315,6 +315,78 @@ function UI.Dropdown(panel, label, hint, y, values, labels, get, set, width, off
     return row, y - 34, button
 end
 
+-- A select whose choices can change after the page is built (chat windows,
+-- known spells): a small title above a wide select.
+-- optionsFn() returns values, labels.
+function UI.DynamicDropdown(panel, label, hint, y, optionsFn, get, set, width)
+    local row = UI.Row(panel, y, 54, nil, hint)
+    row.hcHintTitle = label
+    local title = UI.FontString(row, "GameFontHighlightSmall", "muted")
+    title:SetPoint("TOPLEFT", 0, 0)
+    title:SetText(label)
+    local button = UI.SelectButton(row, width or 264, 30)
+    button:SetPoint("TOPLEFT", 0, -15)
+    local function render()
+        local values, labels = optionsFn()
+        local current = get()
+        for index, value in ipairs(values) do
+            if value == current then button:SetText(labels[index]); return end
+        end
+        -- The stored choice is no longer offered: show the first option.
+        button:SetText(labels[1] or "—")
+    end
+    row.hcCloseMenu = popupMenu(button, optionsFn, get, function(value)
+        set(value)
+        render()
+        refreshAll(panel)
+    end)
+    UI.AttachHint(button, label, hint)
+    UI.AttachTitleHint(row, title, label, hint)
+    onRefresh(panel, render)
+    render()
+    return row, y - 54, button
+end
+
+-- Two labelled selects under one heading.
+-- left/right = { label, values, labels, get, set, hint? }; values and labels
+-- may be functions.  Returns leftButton, rightButton, next y.
+function UI.DropdownPair(panel, heading, y, left, right)
+    local groupTitle = UI.FontString(panel, "GameFontHighlight", "accent")
+    groupTitle:SetPoint("TOPLEFT", UI.PAD, y)
+    groupTitle:SetText(heading)
+    local function choice(x, spec)
+        local title = UI.FontString(panel, "GameFontHighlightSmall", "muted")
+        title:SetPoint("TOPLEFT", x, y - 20)
+        title:SetText(spec.label)
+        local button = UI.SelectButton(panel, 150, 30)
+        button:SetPoint("TOPLEFT", x, y - 35)
+        button.hcTitle = title
+        local function choices() return resolve(spec.values), resolve(spec.labels) end
+        local function render()
+            local values, labels = choices()
+            local current = spec.get()
+            local text = labels[1] or "—"
+            for index, value in ipairs(values) do
+                if value == current then text = labels[index] end
+            end
+            button:SetText(text)
+        end
+        popupMenu(button, choices, spec.get, function(value)
+            spec.set(value)
+            render()
+            refreshAll(panel)
+        end)
+        UI.AttachHint(button, heading .. " - " .. spec.label, spec.hint)
+        UI.AttachTitleHint(panel, title, heading .. " - " .. spec.label, spec.hint)
+        onRefresh(panel, render)
+        render()
+        return button
+    end
+    local leftButton = choice(UI.PAD, left)
+    local rightButton = choice(UI.PAD + 190, right)
+    return leftButton, rightButton, y - 76
+end
+
 -- A menu of radio modes and combinable conditions, summarised on the button.
 -- spec = { items = { { label, radio?, heading?, get, set, disabled? } }, summary = fn }
 -- label and disabled may be functions; they are re-read each time it opens.
@@ -596,6 +668,7 @@ function UI.SetEnabled(control, enabled)
     if control.SetEnabled then control:SetEnabled(enabled) end
     local shade = enabled and 1 or 0.5
     if control.Text then control.Text:SetTextColor(shade, shade, shade) end
+    if control.hcTitle then control.hcTitle:SetTextColor(shade, shade, shade) end
 end
 
 -- Retail changed the colour-picker entry point; keep the compatibility work

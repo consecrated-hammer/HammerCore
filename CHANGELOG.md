@@ -15,6 +15,9 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `UI.DynamicDropdown` (choices re-read on open) and `UI.DropdownPair` (two
+  labelled selects under one heading), ported from Salve.
+
 - A lore quiz behind a quest-giver "!" on every About page, and
   `/<cmd> quiz`: five questions from a shared library of more than 100,
   with four shuffled choices, an 8-second timer, a verdict in chat and a
