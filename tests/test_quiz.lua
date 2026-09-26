@@ -131,7 +131,19 @@ do
     end
     equal(quiz.phase, "done", "the quiz finishes after five")
     equal(saved.hammerCore.quizBest, 1, "the best score is saved")
-    equal(wow.LastPrint():find("TestAddon: quiz: 1/5.", 1, true) ~= nil, true, "the result goes to chat")
+    equal(quiz.Destination(), "TEXT", "results default to text")
+    wow.Click(frame.share)
+    equal(wow.LastPrint():find("TestAddon: quiz: 1/5.", 1, true) ~= nil, true, "text shares through addon chat")
+
+    wow.Click(frame.destinations.SAY)
+    equal(saved.hammerCore.quizDestination, "SAY", "a chosen destination is saved")
+    wow.Click(frame.share)
+    equal(wow.sentMessages[#wow.sentMessages].channel, "SAY", "say shares to Say")
+
+    wow.Click(frame.destinations.PARTY)
+    wow.Click(frame.share)
+    equal(wow.LastPrint():find("You are not in a party.", 1, true) ~= nil, true,
+        "party sharing falls back to text when solo")
 end
 
 -- ── The hidden timer setting ───────────────────────────────────────────────

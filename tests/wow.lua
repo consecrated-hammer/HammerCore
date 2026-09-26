@@ -2,7 +2,7 @@
 -- (and addon tests built on it) to create frames, run scripts and inspect
 -- results under plain Lua 5.1.  Unknown widget methods are harmless no-ops.
 
-local wow = { printed = {}, frames = {}, regions = {}, reloads = 0, popups = {} }
+local wow = { printed = {}, frames = {}, regions = {}, reloads = 0, popups = {}, sentMessages = {} }
 
 local Widget = {}
 local methods = {}
@@ -120,6 +120,7 @@ end
 function wow.Install(metadata)
     metadata = metadata or {}
     wow.printed = {}
+    wow.sentMessages = {}
     wow.frames = {}
     wow.regions = {}
     CreateFrame = wow.CreateFrame
@@ -150,6 +151,10 @@ function wow.Install(metadata)
         local parts = {}
         for i = 1, select("#", ...) do parts[#parts + 1] = tostring(select(i, ...)) end
         wow.printed[#wow.printed + 1] = table.concat(parts, " ")
+    end
+    IsInGroup = function() return false end
+    SendChatMessage = function(message, channel)
+        wow.sentMessages[#wow.sentMessages + 1] = { message = message, channel = channel }
     end
 end
 

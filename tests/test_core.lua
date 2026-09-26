@@ -254,6 +254,11 @@ do
     HC.UI.Header = header
 
     HC.Settings:Show("About")
+    equal(wow.FindText("Puzzle time!") ~= nil, true, "About has the puzzle row")
+    equal(#HC.Quiz.Prompts, 20, "About has twenty quiz invitations")
+    for _, prompt in ipairs(HC.Quiz.Prompts) do
+        equal(prompt:sub(-1), "?", "each quiz invitation is a question")
+    end
     wow.Click(HC.Pages.aboutIcon)
     local said = wow.LastPrint()
     equal(said == "TestAddon: Tip one" or said == "TestAddon: Tip two", true, "the icon prints a tip to chat")

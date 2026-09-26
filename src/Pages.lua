@@ -151,12 +151,12 @@ troubleshooting.build = function(panel, y)
 end
 
 -- ── About ──────────────────────────────────────────────────────────────────
--- Every About page has the same shape: the version card, then a centred,
--- deliberately whimsical block — the note heading, the addon's icon as a
--- button with a caption, and a rotating tip in a storybook face.  Clicking
--- the icon shows a new tip and says something in chat.
+-- Every About page has the same shape: the version card followed by two
+-- compact rows.  The first gives the addon's rotating advice; the second
+-- opens the lore quiz.  Clicking the addon icon shows a new tip and says
+-- something in chat.
 --   spec.about = { note = "FROM THE FORGE", tips = { ... },
---                  action = "Polish the anvil",       -- icon caption
+--                  action = "Polish the anvil",       -- row subtext and icon hint
 --                  chat = { ... }?,                   -- lines to print; else the tip
 --                  onApply = function() end?,         -- e.g. a sound
 --                  credit = "..."? }
@@ -188,63 +188,55 @@ about.build = function(panel, y)
     }, "\n"))
 
     if spec.tips and #spec.tips > 0 then
-        -- A full-width holder so every piece centres on the content column.
-        local holder = CreateFrame("Frame", nil, panel)
-        holder:SetPoint("TOPLEFT", UI.PAD, y - 6)
-        holder:SetSize(UI.CONTENT_WIDTH, 250)
+        local function row(headingText, subtext, iconTexture, onClick, hintTitle, hintText)
+            local holder
+            holder, y = UI.Card(panel, y - 6, 78)
+            T.Surface(holder, "raised", "edge")
 
-        local heading = UI.FontString(holder, "GameFontNormal", "accent")
-        heading:SetPoint("TOP", 0, 0)
-        heading:SetText(spec.note or "NOTE")
+            local heading = UI.FontString(holder, "GameFontHighlight", "accent")
+            heading:SetPoint("TOPLEFT", 14, -14)
+            heading:SetWidth(136)
+            heading:SetJustifyH("LEFT")
+            heading:SetText(headingText)
 
-        local icon = CreateFrame("Button", nil, holder)
-        icon:SetSize(64, 64)
-        icon:SetPoint("TOP", heading, "BOTTOM", 0, -14)
-        -- Normal and pushed textures, so the icon dips when pressed.
-        icon:SetNormalTexture(HC.spec.icon)
-        icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
-        icon:SetPushedTexture(HC.spec.icon)
-        local pushed = icon.GetPushedTexture and icon:GetPushedTexture()
-        if pushed then
-            pushed:ClearAllPoints()
-            pushed:SetPoint("TOPLEFT", 2, -2)
-            pushed:SetPoint("BOTTOMRIGHT", -2, 2)
-        end
-        Pages.aboutIcon = icon
+            local detail = UI.FontString(holder, "GameFontHighlightSmall", "muted")
+            detail:SetPoint("TOPLEFT", heading, "BOTTOMLEFT", 0, -5)
+            detail:SetWidth(136)
+            detail:SetJustifyH("LEFT")
+            if detail.SetWordWrap then detail:SetWordWrap(false) end
+            detail:SetText(subtext)
 
-        local caption = UI.FontString(holder, "GameFontDisableSmall", "muted")
-        caption:SetPoint("TOP", icon, "BOTTOM", 0, -6)
-        caption:SetText(spec.action or ("Apply " .. HC.name))
+            local icon = CreateFrame("Button", nil, holder)
+            icon:SetSize(42, 42)
+            icon:SetPoint("LEFT", 162, 0)
+            icon:SetNormalTexture(iconTexture)
+            icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+            icon:SetPushedTexture(iconTexture)
+            local pushed = icon.GetPushedTexture and icon:GetPushedTexture()
+            if pushed then
+                pushed:ClearAllPoints()
+                pushed:SetPoint("TOPLEFT", 2, -2)
+                pushed:SetPoint("BOTTOMRIGHT", -2, 2)
+            end
+            icon:SetScript("OnClick", onClick)
+            UI.AttachHint(icon, hintTitle, hintText)
 
-        local tipCard = CreateFrame("Frame", nil, holder, "BackdropTemplate")
-        tipCard:SetPoint("TOP", caption, "BOTTOM", 0, -12)
-        tipCard:SetSize(460, 58)
-        T.Surface(tipCard, "raised", "edge")
-        local tip = UI.FontString(tipCard, "GameFontNormal", "flavour")
-        tip:SetPoint("LEFT", 16, 0)
-        tip:SetPoint("RIGHT", -16, 0)
-        tip:SetJustifyH("CENTER")
-        -- The closest the client has to a storybook face; the default font
-        -- stands in wherever it is missing.
-        if _G.MailFont_Large and tip.SetFontObject then tip:SetFontObject("MailFont_Large") end
-        local fade = tip.CreateAnimationGroup and tip:CreateAnimationGroup()
-        if fade then
-            local alpha = fade:CreateAnimation("Alpha")
-            alpha:SetFromAlpha(0)
-            alpha:SetToAlpha(1)
-            alpha:SetDuration(0.35)
+            local text = UI.FontString(holder, "GameFontNormal", "flavour")
+            text:SetPoint("LEFT", icon, "RIGHT", 18, 0)
+            text:SetPoint("RIGHT", -16, 0)
+            text:SetJustifyH("LEFT")
+            return icon, text
         end
 
         local last
+        local tip
         local function show()
             local nextTip
             repeat nextTip = math.random(#spec.tips) until #spec.tips == 1 or nextTip ~= last
             last = nextTip
             tip:SetText(spec.tips[nextTip])
-            if fade then fade:Stop(); fade:Play() end
             return spec.tips[nextTip]
         end
-        Pages.NextTip = show
         local function apply()
             local shown = show()
             local line = shown
@@ -252,21 +244,22 @@ about.build = function(panel, y)
             HC.Print(line)
             if spec.onApply then spec.onApply() end
         end
-        Pages.Apply = apply
-        icon:SetScript("OnClick", apply)
 
-        -- The quiz waits behind a quest-giver's "!".
-        local quest = CreateFrame("Button", nil, holder)
-        quest:SetSize(26, 26)
-        quest:SetPoint("TOP", tipCard, "BOTTOM", 0, -10)
-        quest:SetNormalTexture("Interface\\GossipFrame\\AvailableQuestIcon")
-        quest:SetHighlightTexture("Interface\\GossipFrame\\AvailableQuestIcon", "ADD")
-        quest:SetScript("OnClick", function() HC.Quiz:Start() end)
-        UI.AttachHint(quest, "A quest awaits", "Five questions of lore. Answer before the sand runs out.")
+        local icon
+        icon, tip = row(spec.note or "NOTE", spec.action or "A little advice.", HC.spec.icon, apply,
+            spec.action or ("Apply " .. HC.name), "Entirely necessary. Probably.")
+        Pages.aboutIcon = icon
+        Pages.NextTip = show
+        Pages.Apply = apply
+
+        local prompts = HC.Quiz and HC.Quiz.Prompts or { "Could you be Khadgar's next assistant?" }
+        local puzzle = prompts[math.random(#prompts)]
+        local quest, puzzleText = row("Puzzle time!", "Five questions of lore.",
+            "Interface\\GossipFrame\\AvailableQuestIcon", function() HC.Quiz:Start() end,
+            "Take the quiz", "Five questions of lore. Answer before the sand runs out.")
+        puzzleText:SetText(puzzle)
         Pages.quizButton = quest
-        UI.AttachHint(icon, spec.action or ("Apply " .. HC.name), "Entirely necessary. Probably.")
         UI.OnRefresh(panel, show)
-        y = y - 6 - 220
     end
     if spec.credit then
         local credit = UI.FontString(panel, "GameFontDisableSmall", "muted")

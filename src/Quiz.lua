@@ -10,6 +10,29 @@ local T, UI = HC.Theme, HC.UI
 local Quiz = { LENGTH = 5, REVEAL = 1.4, DEFAULT_SECONDS = 8 }
 HC.Quiz = Quiz
 
+Quiz.Prompts = {
+    "Could you be Khadgar’s next assistant?",
+    "Can you settle an argument in the Archivist’s library?",
+    "Do you remember more than quest objectives?",
+    "Which tavern tale did you dismiss too quickly?",
+    "Has a bronze dragon already asked you this?",
+    "Can you find the missing Kirin Tor footnote?",
+    "Is one of these answers secretly a murloc?",
+    "Will your innkeeper be impressed?",
+    "How dusty is your adventurer’s handbook?",
+    "Can you help a wandering scholar?",
+    "Are the dragons testing a future historian?",
+    "Why is there a question mark over your head?",
+    "Will you lead the next campfire lore debate?",
+    "Can you prove you read the dialogue?",
+    "Should a goblin bet on your answer?",
+    "Why is the library suddenly so quiet?",
+    "How well do you know your favourite zone?",
+    "Can you decipher this Titan tablet?",
+    "Will this knowledge help in a raid?",
+    "Are you ready for a little Azeroth trivia?",
+}
+
 local VERDICTS = {
     [0] = "Have you considered reading the quest text?",
     [1] = "A fresh recruit. Everyone starts somewhere.",
@@ -72,6 +95,43 @@ end
 -- ── Window ─────────────────────────────────────────────────────────────────
 
 local WIDTH = 460
+local DESTINATIONS = { "TEXT", "SAY", "PARTY" }
+local DESTINATION_LABELS = { TEXT = "Text", SAY = "Say", PARTY = "Party" }
+
+function Quiz.Destination()
+    local state = HC.State()
+    local destination = state.quizDestination
+    for _, value in ipairs(DESTINATIONS) do
+        if destination == value then return destination end
+    end
+    return "TEXT"
+end
+
+function Quiz:SetDestination(destination)
+    for _, value in ipairs(DESTINATIONS) do
+        if destination == value then
+            HC.State().quizDestination = destination
+            return
+        end
+    end
+end
+
+function Quiz:ResultText()
+    return "I scored " .. self.score .. "/" .. #self.run .. " in the " .. HC.name .. " lore quiz. " .. self.verdict
+end
+
+function Quiz:Publish()
+    local destination, text = Quiz.Destination(), self:ResultText()
+    if destination == "TEXT" then
+        HC.Print("quiz: " .. self.score .. "/" .. #self.run .. ". " .. self.verdict)
+    elseif destination == "PARTY" and not (IsInGroup and IsInGroup()) then
+        HC.Print("You are not in a party. " .. text)
+    elseif SendChatMessage then
+        SendChatMessage(text, destination)
+    else
+        HC.Print(text)
+    end
+end
 
 function Quiz:Create()
     if self.frame then return self.frame end
@@ -122,12 +182,31 @@ function Quiz:Create()
     frame.feedback:SetPoint("BOTTOM", 0, 52)
     frame.feedback:SetWidth(WIDTH - 32)
 
-    frame.again = UI.Button(frame, 120, 24, "primary")
-    frame.again:SetPoint("BOTTOMRIGHT", frame, "BOTTOM", -6, 16)
+    frame.shareLabel = UI.FontString(frame, "GameFontHighlightSmall", "muted")
+    frame.shareLabel:SetPoint("BOTTOM", 0, 108)
+    frame.shareLabel:SetText("Share your result with")
+    frame.destinations = {}
+    for index, destination in ipairs(DESTINATIONS) do
+        local button = UI.Button(frame, 82, 22)
+        button:SetPoint("BOTTOM", (index - 2) * 92, 82)
+        button:SetText(DESTINATION_LABELS[destination])
+        button:SetScript("OnClick", function()
+            Quiz:SetDestination(destination)
+            Quiz:RefreshDestination()
+        end)
+        frame.destinations[destination] = button
+    end
+
+    frame.again = UI.Button(frame, 104, 24)
+    frame.again:SetPoint("BOTTOMLEFT", 16, 16)
     frame.again:SetText("Again")
     frame.again:SetScript("OnClick", function() Quiz:Start() end)
-    frame.done = UI.Button(frame, 120, 24)
-    frame.done:SetPoint("BOTTOMLEFT", frame, "BOTTOM", 6, 16)
+    frame.share = UI.Button(frame, 130, 24, "primary")
+    frame.share:SetPoint("BOTTOM", 0, 16)
+    frame.share:SetText("Share result")
+    frame.share:SetScript("OnClick", function() Quiz:Publish() end)
+    frame.done = UI.Button(frame, 104, 24)
+    frame.done:SetPoint("BOTTOMRIGHT", -16, 16)
     frame.done:SetText("Close")
     frame.done:SetScript("OnClick", function() frame:Hide() end)
 
@@ -138,11 +217,25 @@ function Quiz:Create()
     return frame
 end
 
+function Quiz:RefreshDestination()
+    local frame = self.frame
+    if not frame then return end
+    local chosen = Quiz.Destination()
+    for destination, button in pairs(frame.destinations) do
+        T.Border(button, destination == chosen and "accent" or "edge")
+    end
+end
+
 function Quiz:Start()
     local frame = self:Create()
     self.run, self.index, self.score = Quiz.Draw(), 0, 0
     frame:Show()
     frame:Raise()
+    frame.again:Hide()
+    frame.share:Hide()
+    frame.shareLabel:Hide()
+    for _, button in pairs(frame.destinations) do button:Hide() end
+    frame.done:Hide()
     if #self.run == 0 then
         self.phase = "done"
         frame.question:SetText("The archives are empty for this character.")
@@ -167,8 +260,6 @@ function Quiz:Next()
         button:Show()
     end
     frame.feedback:SetText("")
-    frame.again:Hide()
-    frame.done:Hide()
     frame.timerTrack:SetShown(self.limit ~= nil)
     frame.timer:SetShown(self.limit ~= nil)
     frame.timer:SetWidth(WIDTH - 32)
@@ -214,8 +305,12 @@ function Quiz:Finish()
     frame.timer:Hide()
     frame.feedback:SetText("")
     frame.again:Show()
+    frame.share:Show()
+    frame.shareLabel:Show()
+    for _, button in pairs(frame.destinations) do button:Show() end
+    self:RefreshDestination()
     frame.done:Show()
-    HC.Print("quiz: " .. self.score .. "/" .. total .. ". " .. verdict)
+    self.verdict = verdict
 end
 
 function Quiz.Verdicts() return VERDICTS end
