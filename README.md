@@ -96,6 +96,16 @@ Every colour goes through `HC.Theme` roles (`T.Surface`, `T.Fill`,
 `T.Text`, `T.Code`), never literal values. Settings text is one line and
 does not wrap.
 
+### Lore quiz
+
+`src/QuizData.lua` is the shared question library. Each entry is
+`{ "Question", "Correct", "Wrong", "Wrong", "Wrong", era = ?, class = ?, race = ? }`,
+with the correct answer always second. `era` is `"both"` (the default),
+`"classic"` (WoW Forever) or `"retail"`. `class` and `race` take client
+tokens such as `PALADIN` or `Draenei`. The client's era comes from
+`spec.clientLabel` (anything containing "Forever" is Classic), or from
+`spec.era`. `tests/test_quiz.lua` validates every entry.
+
 ### Themes
 
 Modern is implemented. Classic, Blizzard's dialog look circa 2004, is

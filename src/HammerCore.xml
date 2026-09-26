@@ -8,4 +8,6 @@
     <Script file="Commands.lua"/>
     <Script file="Copy.lua"/>
     <Script file="Minimap.lua"/>
+    <Script file="QuizData.lua"/>
+    <Script file="Quiz.lua"/>
 </Ui>

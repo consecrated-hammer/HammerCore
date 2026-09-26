@@ -12,7 +12,8 @@ HC.Commands = Commands
 local CORE, DISPLAY = "Core", "Display"
 
 -- entry = { name = "reset position", args = "[on|off]"?, help = "...",
---           section = "Bar", run = function(args) end }
+--           section = "Bar", run = function(args) end, hidden = true? }
+-- A hidden command works but is left out of help and the Commands page.
 -- A name may be two words; the longer match wins when dispatching.
 function Commands:Add(entry)
     assert(type(entry.name) == "string" and type(entry.run) == "function", "command needs name and run")
@@ -100,6 +101,21 @@ function Commands:RegisterCore()
     end
     self:Add({ name = "reset settings", section = CORE, help = "Reset every setting after a confirmation",
         run = function() HC.ConfirmResetSettings() end })
+    self:Add({ name = "quiz", section = CORE, help = "Take a five-question lore quiz",
+        run = function() HC.Quiz:Start() end })
+    self:Add({ name = "quiz timer", args = "<3-30|off>", section = CORE, hidden = true,
+        help = "Seconds per quiz question",
+        run = function(args, entry)
+            local state = HC.State()
+            if args == "off" then
+                state.quizSeconds = false
+                return HC.Print("quiz timer off")
+            end
+            local seconds = tonumber(args)
+            if not seconds or seconds < 3 or seconds > 30 then return usage(entry) end
+            state.quizSeconds = math.floor(seconds)
+            HC.Print("quiz timer " .. state.quizSeconds .. " seconds")
+        end })
 
     for _, verb in ipairs({ "toggle", "lock", "unlock" }) do
         local handler = spec[verb]
@@ -153,7 +169,7 @@ function Commands:Sections()
     for _, section in ipairs(ordered) do
         local entries = {}
         for _, entry in ipairs(self.list) do
-            if entry.section == section then entries[#entries + 1] = entry end
+            if entry.section == section and not entry.hidden then entries[#entries + 1] = entry end
         end
         result[#result + 1] = { name = section, entries = entries }
     end

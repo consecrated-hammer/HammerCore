@@ -191,7 +191,7 @@ about.build = function(panel, y)
         -- A full-width holder so every piece centres on the content column.
         local holder = CreateFrame("Frame", nil, panel)
         holder:SetPoint("TOPLEFT", UI.PAD, y - 6)
-        holder:SetSize(UI.CONTENT_WIDTH, 230)
+        holder:SetSize(UI.CONTENT_WIDTH, 250)
 
         local heading = UI.FontString(holder, "GameFontNormal", "accent")
         heading:SetPoint("TOP", 0, 0)
@@ -254,9 +254,19 @@ about.build = function(panel, y)
         end
         Pages.Apply = apply
         icon:SetScript("OnClick", apply)
+
+        -- The quiz waits behind a quest-giver's "!".
+        local quest = CreateFrame("Button", nil, holder)
+        quest:SetSize(26, 26)
+        quest:SetPoint("TOP", tipCard, "BOTTOM", 0, -10)
+        quest:SetNormalTexture("Interface\\GossipFrame\\AvailableQuestIcon")
+        quest:SetHighlightTexture("Interface\\GossipFrame\\AvailableQuestIcon", "ADD")
+        quest:SetScript("OnClick", function() HC.Quiz:Start() end)
+        UI.AttachHint(quest, "A quest awaits", "Five questions of lore. Answer before the sand runs out.")
+        Pages.quizButton = quest
         UI.AttachHint(icon, spec.action or ("Apply " .. HC.name), "Entirely necessary. Probably.")
         UI.OnRefresh(panel, show)
-        y = y - 6 - 180
+        y = y - 6 - 220
     end
     if spec.credit then
         local credit = UI.FontString(panel, "GameFontDisableSmall", "muted")

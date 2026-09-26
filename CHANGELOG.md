@@ -13,6 +13,16 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   label responded.
 - The first rail heading lines up with the page title.
 
+### Added
+
+- A lore quiz behind a quest-giver "!" on every About page, and
+  `/<cmd> quiz`: five questions from a shared library of more than 100,
+  with four shuffled choices, an 8-second timer, a verdict in chat and a
+  saved best score. Questions are tagged by era (both, Classic for WoW
+  Forever, or Retail) and optionally by class or race, so a character only
+  sees questions that fit their world and themselves. The hidden
+  `/<cmd> quiz timer <3-30|off>` changes the timer.
+
 ### Changed
 
 - Visibility puts the addon's own sections first, then "Other" with
