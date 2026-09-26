@@ -66,6 +66,12 @@ def main() -> int:
         assert "## Version: 0.1.0\n" in (staged / "Anvilwise_Camelot.toc").read_text(), "only the client's TOC is stamped"
         assert (staged / "Libs/HammerCore/Core.lua").is_file(), "the vendored library ships"
         assert not (staged / "tests").exists(), "tests do not ship"
+
+        # An interrupted swap leaves only the set-aside copy; the number must
+        # still climb rather than restart at dev1.
+        staged.rename(output / ".Anvilwise.previous")
+        third = run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--client", "retail", "--output", str(output))
+        assert "0.1.0-dev3" in third, "an interrupted swap does not reset the dev number"
     print("hammercore tool tests passed")
     return 0
 

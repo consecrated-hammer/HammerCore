@@ -41,21 +41,30 @@ def copy_runtime(source: Path, destination: Path) -> None:
         shutil.copy2(toc, destination / toc.name)
 
 
-def dev_version(toc: Path, existing: Path) -> str:
+def dev_version(toc: Path, name: str, roots: list[Path]) -> str:
+    """The next -devN, one above the highest seen in any client.
+
+    Every TOC of the installed copy and of a set-aside `.Name.previous` copy
+    counts, in every client root, so an interrupted swap never resets the
+    number and both clients carry the same version.
+    """
     match = re.search(r"^## Version:\s*(.+?)\s*$", toc.read_text(encoding="utf-8"), re.MULTILINE)
     if not match:
         raise SystemExit(f"TOC has no Version metadata: {toc}")
     base = re.sub(r"-dev-?\d+$", "", match.group(1))
-    number = 1
-    if existing.is_file():
-        prior = re.search(r"^## Version:\s*" + re.escape(base) + r"-dev-?(\d+)\s*$",
-                          existing.read_text(encoding="utf-8", errors="replace"), re.MULTILINE)
-        if prior:
-            number = int(prior.group(1)) + 1
-    return f"{base}-dev{number}"
+    highest = 0
+    pattern = re.compile(r"^## Version:\s*" + re.escape(base) + r"-dev-?(\d+)\s*$", re.MULTILINE)
+    for root in roots:
+        for folder in (root / name, root / f".{name}.previous"):
+            if not folder.is_dir():
+                continue
+            for installed in folder.glob("*.toc"):
+                for found in pattern.findall(installed.read_text(encoding="utf-8", errors="replace")):
+                    highest = max(highest, int(found))
+    return f"{base}-dev{highest + 1}"
 
 
-def stage(source: Path, name: str, output: Path, toc_name: str) -> str:
+def stage(source: Path, name: str, output: Path, toc_name: str, version: str) -> None:
     selected = source / toc_name
     if not selected.is_file():
         raise SystemExit(f"missing {toc_name} in {source}")
@@ -70,7 +79,6 @@ def stage(source: Path, name: str, output: Path, toc_name: str) -> str:
     try:
         staged.mkdir()
         copy_runtime(source, staged)
-        version = dev_version(selected, destination / toc_name)
         staged_toc = staged / toc_name
         staged_toc.write_text(re.sub(r"^## Version:\s*.+?$", f"## Version: {version}",
                                      staged_toc.read_text(encoding="utf-8"), flags=re.MULTILINE),
@@ -90,7 +98,6 @@ def stage(source: Path, name: str, output: Path, toc_name: str) -> str:
     finally:
         if stage_root.exists():
             shutil.rmtree(stage_root)
-    return version
 
 
 def main() -> int:
@@ -102,13 +109,15 @@ def main() -> int:
     source = args.addon.resolve()
     name = source.name
     clients = ["retail", "forever"] if args.client == "both" else [args.client]
+    roots = [args.output] if args.output else [CLIENTS[c][0] for c in ("retail", "forever")]
+    version = dev_version(source / CLIENTS[clients[0]][1].format(name=name), name, roots)
     for client in clients:
         folder, toc = CLIENTS[client]
         # Never create a client folder: a missing one means the Syncthing
         # share is not mounted, and staging would write into the bare mount point.
         if not args.output and not folder.is_dir():
             raise SystemExit(f"{folder} is missing; is the Syncthing share mounted?")
-        version = stage(source, name, args.output or folder, toc.format(name=name))
+        stage(source, name, args.output or folder, toc.format(name=name), version)
         print(f"Staged {name} {version} for {client} at {(args.output or folder) / name}")
     return 0
 
