@@ -104,6 +104,10 @@ def main() -> int:
     clients = ["retail", "forever"] if args.client == "both" else [args.client]
     for client in clients:
         folder, toc = CLIENTS[client]
+        # Never create a client folder: a missing one means the Syncthing
+        # share is not mounted, and staging would write into the bare mount point.
+        if not args.output and not folder.is_dir():
+            raise SystemExit(f"{folder} is missing; is the Syncthing share mounted?")
         version = stage(source, name, args.output or folder, toc.format(name=name))
         print(f"Staged {name} {version} for {client} at {(args.output or folder) / name}")
     return 0
