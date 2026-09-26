@@ -104,9 +104,8 @@ do
     slash("theme parchment")
     equal(wow.LastPrint(), "TestAddon: unknown theme", "an unknown theme is refused")
     slash("theme classic")
-    equal(HC.State().theme, "classic", "the classic theme can be chosen")
-    equal(wow.LastPrint(), "TestAddon: theme classic; /reload to apply", "and applies after a reload")
-    slash("theme modern")
+    equal(HC.State().theme, "modern", "classic is switched off for now")
+    equal(wow.LastPrint(), "TestAddon: Classic is not available yet", "the refusal says why")
 
     slash("reset position")
     equal(calls.resetPosition, true, "reset position runs the addon's reset")
@@ -167,7 +166,7 @@ do
     HC.Settings:Show()
     local names = {}
     for _, spec in ipairs(HC.Settings.order) do names[#names + 1] = spec.name end
-    equal(table.concat(names, ","), "Panel,Broken,Visibility,Learned,Theme,Commands,Troubleshooting,About",
+    equal(table.concat(names, ","), "Panel,Broken,Visibility,Learned,Commands,Troubleshooting,About",
         "main pages, Visibility, then addon and standard reference pages")
     equal(#HC.Settings.dividers, 1, "one divider separates the two sections")
     equal(HC.Settings.selected, "Panel", "the first page opens by default")
@@ -214,6 +213,9 @@ do
         if wow.Plain(line) == "  Left-click a cell - Apply its marker" then found = true end
     end
     equal(found, true, "actions appear in help without a slash prefix")
+    for _, line in ipairs(wow.printed) do
+        equal(wow.Plain(line):find("/testaddon theme", 1, true), nil, "theme is hidden from help")
+    end
     SlashCmdList.TESTADDON("left-click")
     equal(wow.LastPrint(), "TestAddon: unknown command. Type /testaddon help for the list.", "actions are not commands")
 
@@ -300,6 +302,7 @@ end
 -- ── Classic theme ──────────────────────────────────────────────────────────
 do
     local HC, saved = addon()
+    HC.Theme.registry.classic.available = true
     saved.hammerCore = { theme = "classic" }
     local checked
     HC.Settings:NewPage({ name = "Panel" }, function(panel, y)
@@ -326,6 +329,8 @@ do
     HC.Settings:Show("About")
     HC.Quiz:Start()
     equal(HC.Quiz.frame.backdrop.edgeFile, "Interface\\DialogFrame\\UI-DialogBox-Border", "the quiz is framed too")
+    HC.Theme.registry.classic.available = false
+    equal(HC.Theme.IsClassic(), false, "with classic off, a saved classic choice falls back to modern")
 end
 
 -- ── Multi-select menu ──────────────────────────────────────────────────────

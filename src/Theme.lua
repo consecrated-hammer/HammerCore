@@ -37,9 +37,11 @@ Theme.registry = {
     },
     -- Blizzard's own look, circa 2004: dialog-framed windows, tooltip-bordered
     -- cards, gold headings, red panel buttons and the classic checkbox.
+    -- Switched off (owner, 2026-09-26: "needs a LOT of work"); a saved choice
+    -- falls back to Modern.  Tests switch it on to keep it building.
     classic = {
         label = "Classic",
-        available = true,
+        available = false,
         colours = {
             outer = { 1, 1, 1, 1 },
             rail = { 0.06, 0.06, 0.06, 0.92 },

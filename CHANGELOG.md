@@ -7,6 +7,14 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+- The Theme page and `theme` command are withdrawn, and Classic is switched
+  off until it is reworked. A saved Classic choice falls back to Modern. The
+  Classic code stays and is still built by the tests.
+- Select buttons and menu items never wrap. `UI.Dropdown` takes an optional
+  button width for long choices.
+
 ### Added
 
 - **Classic theme**, Blizzard's own look circa 2004, chosen on the Theme

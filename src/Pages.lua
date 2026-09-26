@@ -277,4 +277,5 @@ about.build = function(panel, y)
     return y - 8
 end
 
-Pages.reference = { theme, commands, troubleshooting, about }
+-- The Theme page is withheld until Classic is ready; see Theme.lua.
+Pages.reference = { commands, troubleshooting, about }

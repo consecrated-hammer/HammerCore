@@ -85,7 +85,9 @@ function Commands:RegisterCore()
             if value == nil then return usage(entry) end
             HC.SetMinimap(value)
         end })
-    self:Add({ name = "theme", args = "[modern|classic]", section = CORE, help = "Choose the settings theme",
+    -- Hidden while Classic is switched off; see Theme.lua.
+    self:Add({ name = "theme", args = "[modern|classic]", section = CORE, hidden = true,
+        help = "Choose the settings theme",
         run = function(args)
             if args == "" then
                 local _, key = T.Active()

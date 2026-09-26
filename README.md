@@ -75,9 +75,9 @@ HC:Start()
 |---|---|
 | Chat | `Name:` prefix in `|cffd4af37`; `HC.Print(message)` |
 | Login | `Name v1.2.3 loaded - type /cmd for settings, /cmd help for commands` |
-| Core commands | `/cmd`, `help`, `version`, `about`, `debug`, `startup [on\|off]`, `minimap [on\|off]`, `theme [modern\|classic]`, `reset position`, `reset settings` |
+| Core commands | `/cmd`, `help`, `version`, `about`, `debug`, `startup [on\|off]`, `minimap [on\|off]`, `reset position`, `reset settings`, `quiz` (hidden: `theme`, `quiz timer`) |
 | Shared verbs | `toggle`, `lock`, `unlock`, present only when the addon supplies them |
-| Settings rail | Addon pages under CORE, a divider, then REFERENCE: addon reference pages, Theme, Commands, Troubleshooting, About |
+| Settings rail | Addon pages under CORE, a divider, then REFERENCE: addon reference pages, Commands, Troubleshooting, About (Theme is withheld for now) |
 | Visibility | "Show startup message" and "Show minimap button", plus `spec.visibility(panel, y)`. The page goes last in CORE unless placed with `HC.Settings:AddVisibility()` |
 
 HammerCore keeps its state in `db.hammerCore`, and on first run adopts the
@@ -108,7 +108,10 @@ tokens such as `PALADIN` or `Draenei`. The client's era comes from
 
 ### Themes
 
-Two themes, chosen per addon on the Theme page and applied after a reload:
+**The Theme page and `theme` command are withdrawn for now**, and Classic is
+switched off (`available = false`) until it is reworked. Tests switch it on
+to keep it building. When enabled, the two themes are chosen per addon on the
+Theme page and applied after a reload:
 
 - **Modern**, the flat slate look Salve introduced.
 - **Classic**, Blizzard's look circa 2004: dialog-framed windows,

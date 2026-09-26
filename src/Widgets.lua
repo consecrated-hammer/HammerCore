@@ -144,6 +144,8 @@ function UI.SelectButton(parent, width, height)
     button.Text:SetPoint("LEFT", 10, 0)
     button.Text:SetPoint("RIGHT", -26, 0)
     button.Text:SetJustifyH("LEFT")
+    -- A select shows one line; size the button to its longest choice.
+    if button.Text.SetWordWrap then button.Text:SetWordWrap(false) end
     button.SetText = function(self, text)
         self.Text:SetText(text or "")
         self.text = text
@@ -197,6 +199,7 @@ local function popupMenu(button, choices, get, pick)
                 item.label:SetPoint("LEFT", 10, 0)
                 item.label:SetPoint("RIGHT", -8, 0)
                 item.label:SetJustifyH("LEFT")
+                if item.label.SetWordWrap then item.label:SetWordWrap(false) end
                 item:HookScript("OnEnter", function(self) paint(self, get() == self.value, true) end)
                 item:HookScript("OnLeave", function(self) paint(self, get() == self.value, false) end)
                 item:SetScript("OnClick", function(self)
@@ -336,9 +339,10 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
 end
 
 -- A labelled select.  values/labels may be tables or functions.
-function UI.Dropdown(panel, label, hint, y, values, labels, get, set, width, offset)
+-- buttonWidth widens the select for long choices (default 156).
+function UI.Dropdown(panel, label, hint, y, values, labels, get, set, width, offset, buttonWidth)
     local row = UI.Row(panel, y, 30, label, hint, width)
-    local button = UI.SelectButton(row, 156, 30)
+    local button = UI.SelectButton(row, buttonWidth or 156, 30)
     button:SetPoint("LEFT", row, "LEFT", offset or 150, 0)
     local function choices() return resolve(values), resolve(labels) end
     local function render()
