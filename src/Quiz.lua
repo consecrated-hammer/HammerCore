@@ -98,32 +98,14 @@ local WIDTH = 460
 local DESTINATIONS = { "TEXT", "SAY", "PARTY" }
 local DESTINATION_LABELS = { TEXT = "Text", SAY = "Say", PARTY = "Party" }
 
-function Quiz.Destination()
-    local state = HC.State()
-    local destination = state.quizDestination
-    for _, value in ipairs(DESTINATIONS) do
-        if destination == value then return destination end
-    end
-    return "TEXT"
-end
-
-function Quiz:SetDestination(destination)
-    for _, value in ipairs(DESTINATIONS) do
-        if destination == value then
-            HC.State().quizDestination = destination
-            return
-        end
-    end
-end
-
 function Quiz:ResultText()
-    return "I scored " .. self.score .. "/" .. #self.run .. " in the " .. HC.name .. " lore quiz. " .. self.verdict
+    return "Lore quiz: " .. self.score .. "/" .. #self.run .. ". " .. self.verdict
 end
 
-function Quiz:Publish()
-    local destination, text = Quiz.Destination(), self:ResultText()
+function Quiz:Publish(destination)
+    local text = self:ResultText()
     if destination == "TEXT" then
-        HC.Print("quiz: " .. self.score .. "/" .. #self.run .. ". " .. self.verdict)
+        HC.Print(text)
     elseif destination == "PARTY" and not (IsInGroup and IsInGroup()) then
         HC.Print("You are not in a party. " .. text)
     elseif SendChatMessage then
@@ -182,17 +164,19 @@ function Quiz:Create()
     frame.feedback:SetPoint("BOTTOM", 0, 52)
     frame.feedback:SetWidth(WIDTH - 32)
 
-    frame.shareLabel = UI.FontString(frame, "GameFontHighlightSmall", "muted")
-    frame.shareLabel:SetPoint("BOTTOM", 0, 108)
-    frame.shareLabel:SetText("Share your result with")
+    frame.destinationPopup = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+    frame.destinationPopup:SetSize(114, 82)
+    frame.destinationPopup:SetPoint("BOTTOM", frame, "BOTTOM", 0, 48)
+    T.Surface(frame.destinationPopup, "raised", "edge")
+    frame.destinationPopup:Hide()
     frame.destinations = {}
     for index, destination in ipairs(DESTINATIONS) do
-        local button = UI.Button(frame, 82, 22)
-        button:SetPoint("BOTTOM", (index - 2) * 92, 82)
+        local button = UI.Button(frame.destinationPopup, 98, 22)
+        button:SetPoint("TOP", 0, -6 - (index - 1) * 24)
         button:SetText(DESTINATION_LABELS[destination])
         button:SetScript("OnClick", function()
-            Quiz:SetDestination(destination)
-            Quiz:RefreshDestination()
+            frame.destinationPopup:Hide()
+            Quiz:Publish(destination)
         end)
         frame.destinations[destination] = button
     end
@@ -204,26 +188,22 @@ function Quiz:Create()
     frame.share = UI.Button(frame, 130, 24, "primary")
     frame.share:SetPoint("BOTTOM", 0, 16)
     frame.share:SetText("Share result")
-    frame.share:SetScript("OnClick", function() Quiz:Publish() end)
+    frame.share:SetScript("OnClick", function()
+        frame.destinationPopup:SetShown(not frame.destinationPopup:IsShown())
+    end)
     frame.done = UI.Button(frame, 104, 24)
     frame.done:SetPoint("BOTTOMRIGHT", -16, 16)
     frame.done:SetText("Close")
     frame.done:SetScript("OnClick", function() frame:Hide() end)
 
     frame:SetScript("OnUpdate", function(_, elapsed) Quiz:Tick(elapsed) end)
-    frame:SetScript("OnHide", function() Quiz.phase = nil end)
+    frame:SetScript("OnHide", function()
+        Quiz.phase = nil
+        frame.destinationPopup:Hide()
+    end)
     if UISpecialFrames then UISpecialFrames[#UISpecialFrames + 1] = frame:GetName() end
     self.frame = frame
     return frame
-end
-
-function Quiz:RefreshDestination()
-    local frame = self.frame
-    if not frame then return end
-    local chosen = Quiz.Destination()
-    for destination, button in pairs(frame.destinations) do
-        T.Border(button, destination == chosen and "accent" or "edge")
-    end
 end
 
 function Quiz:Start()
@@ -233,8 +213,7 @@ function Quiz:Start()
     frame:Raise()
     frame.again:Hide()
     frame.share:Hide()
-    frame.shareLabel:Hide()
-    for _, button in pairs(frame.destinations) do button:Hide() end
+    frame.destinationPopup:Hide()
     frame.done:Hide()
     if #self.run == 0 then
         self.phase = "done"
@@ -306,9 +285,7 @@ function Quiz:Finish()
     frame.feedback:SetText("")
     frame.again:Show()
     frame.share:Show()
-    frame.shareLabel:Show()
-    for _, button in pairs(frame.destinations) do button:Show() end
-    self:RefreshDestination()
+    frame.destinationPopup:Hide()
     frame.done:Show()
     self.verdict = verdict
 end

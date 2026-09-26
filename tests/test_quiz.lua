@@ -131,17 +131,19 @@ do
     end
     equal(quiz.phase, "done", "the quiz finishes after five")
     equal(saved.hammerCore.quizBest, 1, "the best score is saved")
-    equal(quiz.Destination(), "TEXT", "results default to text")
     wow.Click(frame.share)
-    equal(wow.LastPrint():find("TestAddon: quiz: 1/5.", 1, true) ~= nil, true, "text shares through addon chat")
+    equal(frame.destinationPopup:IsShown(), true, "share opens the destination popup")
+    equal(#wow.printed, 0, "opening the popup does not share")
+    wow.Click(frame.destinations.TEXT)
+    equal(wow.LastPrint(), "TestAddon: Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+        "text shares the concise result through addon chat")
 
-    wow.Click(frame.destinations.SAY)
-    equal(saved.hammerCore.quizDestination, "SAY", "a chosen destination is saved")
     wow.Click(frame.share)
+    wow.Click(frame.destinations.SAY)
     equal(wow.sentMessages[#wow.sentMessages].channel, "SAY", "say shares to Say")
 
-    wow.Click(frame.destinations.PARTY)
     wow.Click(frame.share)
+    wow.Click(frame.destinations.PARTY)
     equal(wow.LastPrint():find("You are not in a party.", 1, true) ~= nil, true,
         "party sharing falls back to text when solo")
 end
