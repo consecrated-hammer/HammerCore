@@ -1,0 +1,15 @@
+## Interface: 120100
+## Title: {{NAME}}
+## Author: consecrated-hammer
+## Version: 0.1.0
+## X-ReleaseDate: 2026-01-01
+## Notes: {{NAME}}.
+## SavedVariables: {{NAME}}DB
+## LoadSavedVariablesFirst: 1
+## IconTexture: Interface\AddOns\{{NAME}}\Textures\{{NAME}}
+## X-License: GPL-3.0
+## X-Website: https://github.com/consecrated-hammer/{{NAME}}
+
+Libs\HammerCore\HammerCore.xml
+Core.lua
+Options.lua

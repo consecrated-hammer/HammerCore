@@ -1,0 +1,30 @@
+name: Lint
+
+# WoW runs Lua 5.1, so the library is checked and tested under 5.1.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lua:
+    runs-on: ubuntu-latest
+    container: nickblah/lua:5.1-luarocks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Lua 5.1 syntax
+        # Templates contain {{PLACEHOLDERS}} and are checked after scaffolding.
+        run: find src tests -name '*.lua' -print0 | xargs -0 -n1 luac -p
+      - name: Run library tests
+        run: for test in tests/test_*.lua; do lua "$test" || exit 1; done
+
+  tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Lua 5.1
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lua5.1
+      - name: Scaffold, vendor, check and stage an addon
+        run: python3 tests/test_tools.py

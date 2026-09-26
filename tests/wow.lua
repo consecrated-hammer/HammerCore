@@ -1,0 +1,143 @@
+-- A small headless stand-in for the WoW client API: enough for HammerCore
+-- (and addon tests built on it) to create frames, run scripts and inspect
+-- results under plain Lua 5.1.  Unknown widget methods are harmless no-ops.
+
+local wow = { printed = {}, frames = {}, reloads = 0, popups = {} }
+
+local Widget = {}
+local methods = {}
+
+function methods:SetShown(shown) self.shown = shown and true or false end
+function methods:Show() self.shown = true end
+function methods:Hide()
+    local was = self.shown
+    self.shown = false
+    if was and self.scripts.OnHide then self.scripts.OnHide(self) end
+end
+function methods:IsShown() return self.shown end
+function methods:IsVisible() return self.shown end
+function methods:SetScript(name, fn) self.scripts[name] = fn end
+function methods:GetScript(name) return self.scripts[name] end
+function methods:HookScript(name, fn)
+    local previous = self.scripts[name]
+    self.scripts[name] = function(...)
+        if previous then previous(...) end
+        fn(...)
+    end
+end
+function methods:SetSize(w, h) self.width, self.height = w, h end
+function methods:SetWidth(w) self.width = w end
+function methods:SetHeight(h) self.height = h end
+function methods:GetWidth() return self.width or 0 end
+function methods:GetHeight() return self.height or 0 end
+function methods:SetPoint(...) self.points[#self.points + 1] = { ... } end
+function methods:ClearAllPoints() self.points = {} end
+function methods:GetPoint() local p = self.points[1] or {}; return p[1], p[2], p[3], p[4], p[5] end
+function methods:GetName() return self.name end
+function methods:GetParent() return self.parent end
+function methods:SetText(text) self.text = text end
+function methods:GetText() return self.text end
+function methods:GetStringHeight() return 12 end
+function methods:GetEffectiveScale() return 1 end
+function methods:GetCenter() return 0, 0 end
+function methods:GetVerticalScrollRange() return 0 end
+function methods:GetVerticalScroll() return 0 end
+function methods:IsMouseOver() return false end
+function methods:IsOwned() return false end
+function methods:SetEnabled(enabled) self.enabled = enabled end
+function methods:SetBackdropColor(...) self.backdropColour = { ... } end
+function methods:SetBackdropBorderColor(...) self.borderColour = { ... } end
+function methods:SetTextColor(...) self.textColour = { ... } end
+function methods:SetColorTexture(...) self.colour = { ... } end
+function methods:SetTexture(texture) self.texture = texture end
+function methods:SetValue(value)
+    self.value = value
+    if self.scripts.OnValueChanged then self.scripts.OnValueChanged(self, value) end
+end
+function methods:GetValue() return self.value end
+function methods:SetHighlightTexture(texture)
+    self.highlight = wow.CreateTexture(self)
+    self.highlight.texture = texture
+end
+function methods:GetHighlightTexture() return self.highlight end
+function methods:CreateFontString() return wow.CreateRegion(self, "FontString") end
+function methods:CreateTexture() return wow.CreateRegion(self, "Texture") end
+function methods:Raise() self.raised = true end
+
+-- Widget methods are capitalised; fields an addon stores are not.  Only an
+-- unknown method becomes a no-op, so a missing field still reads as nil.
+Widget.__index = function(object, key)
+    if methods[key] then return methods[key] end
+    if type(key) == "string" and key:match("^%u") then return function() end end
+    return nil
+end
+
+function wow.CreateRegion(parent, kind)
+    local region = setmetatable({ kind = kind, parent = parent, shown = true, scripts = {}, points = {} }, Widget)
+    return region
+end
+wow.CreateTexture = function(parent) return wow.CreateRegion(parent, "Texture") end
+
+function wow.CreateFrame(kind, name, parent, template)
+    local frame = setmetatable({ kind = kind, name = name, parent = parent, template = template,
+        shown = true, scripts = {}, points = {} }, Widget)
+    wow.frames[#wow.frames + 1] = frame
+    if name then _G[name] = frame end
+    return frame
+end
+
+function wow.Click(frame, button)
+    local handler = frame.scripts.OnClick
+    assert(handler, "frame has no OnClick")
+    handler(frame, button or "LeftButton")
+end
+
+function wow.Install(metadata)
+    metadata = metadata or {}
+    wow.printed = {}
+    wow.frames = {}
+    CreateFrame = wow.CreateFrame
+    UIParent = wow.CreateFrame("Frame", "UIParent")
+    Minimap = wow.CreateFrame("Frame", "Minimap")
+    Minimap:SetSize(140, 140)
+    GameTooltip = wow.CreateFrame("GameTooltip", "GameTooltip")
+    ChatFontNormal = {}
+    SlashCmdList = {}
+    UISpecialFrames = {}
+    StaticPopupDialogs = {}
+    StaticPopup_Show = function(key) wow.popups[#wow.popups + 1] = key end
+    ReloadUI = function() wow.reloads = wow.reloads + 1 end
+    GetCursorPosition = function() return 0, 0 end
+    InCombatLockdown = function() return false end
+    Settings, SettingsPanel, InterfaceOptions_AddCategory = nil, nil, nil
+    C_AddOns = { GetAddOnMetadata = function(addon, key)
+        local values = metadata[addon]
+        return values and values[key] or nil
+    end }
+    print = function(...)
+        local parts = {}
+        for i = 1, select("#", ...) do parts[#parts + 1] = tostring(select(i, ...)) end
+        wow.printed[#wow.printed + 1] = table.concat(parts, " ")
+    end
+end
+
+-- Loads a copy of HammerCore into a fresh addon namespace, in XML order.
+function wow.LoadHammerCore(root, addonName, ns)
+    ns = ns or {}
+    local xml = assert(io.open(root .. "/HammerCore.xml")):read("*a")
+    for file in xml:gmatch('<Script file="([^"]+)"') do
+        assert(loadfile(root .. "/" .. file))(addonName, ns)
+    end
+    return ns
+end
+
+-- Strips colour codes so assertions read like the chat line the player sees.
+function wow.Plain(text)
+    return (tostring(text):gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""))
+end
+
+function wow.LastPrint()
+    return wow.Plain(wow.printed[#wow.printed] or "")
+end
+
+return wow
