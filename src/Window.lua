@@ -241,6 +241,20 @@ function Settings:Create()
         railY = railY - 30
     end
 
+    -- An addon may pin one action to the foot of the rail, such as a live
+    -- preview the player wants while changing settings on any page.
+    -- spec.railButton = { label = string|fn, run = fn, active = fn? }
+    local railButton = HC.spec.railButton
+    if railButton then
+        local button = UI.Button(rail, RAIL_WIDTH - 24, 24)
+        button:SetPoint("BOTTOMLEFT", 12, 14)
+        button:SetScript("OnClick", function()
+            railButton.run()
+            Settings:RefreshRail()
+        end)
+        self.railButton = button
+    end
+
     self.errors = {}
     for _, spec in ipairs(self.order) do
         local ok, page = xpcall(function() return createPage(spec, host) end,
@@ -262,8 +276,20 @@ function Settings:Create()
     return frame
 end
 
+function Settings:RefreshRail()
+    local spec = HC.spec.railButton
+    local button = self.railButton
+    if not (spec and button) then return end
+    local label = spec.label
+    if type(label) == "function" then label = label() end
+    button:SetText(label)
+    local active = spec.active and spec.active() or false
+    T.Border(button, active and "selected" or "edge")
+end
+
 function Settings:Select(name)
     if not self.window then return end
+    self:RefreshRail()
     if not (name and self.pages[name]) then name = self.order[1] and self.order[1].name end
     self.selected = name
     for pageName, page in pairs(self.pages) do
@@ -288,6 +314,10 @@ end
 
 -- Open settings, optionally on a named page.
 function Settings:Show(name)
+    if HC.spec.hideInCombat and InCombatLockdown and InCombatLockdown() then
+        HC.Print("settings open after combat")
+        return false
+    end
     if HC.spec.canOpen then
         local ok, reason = HC.spec.canOpen()
         if not ok then

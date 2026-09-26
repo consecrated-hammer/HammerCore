@@ -95,6 +95,7 @@ function MinimapButton:Update()
     local state = HC.State()
     -- Minimap-button collectors replace Show/Hide on icons they collect; use
     -- those rather than SetShown so a collapsed icon stays collapsed.
-    if state.minimap then self.button:Show() else self.button:Hide() end
+    local combat = HC.spec.hideInCombat and InCombatLockdown and InCombatLockdown()
+    if state.minimap and not combat then self.button:Show() else self.button:Hide() end
     self.place(state.minimapAngle)
 end

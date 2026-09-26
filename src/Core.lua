@@ -8,7 +8,7 @@ local addonName, ns = ...
 local HC = {}
 ns.HammerCore = HC
 
-HC.VERSION = "0.1.0"
+HC.VERSION = "0.1.1"
 HC.addonName = addonName
 
 -- The one chat colour every addon uses for its name prefix.
@@ -57,6 +57,9 @@ end
 --   toggle, lock, unlock     { run = fn, help = "..." } shared verbs
 --   resetPosition            fn; resetSettings fn (defaults to a full wipe)
 --   window                   { width = n, height = n }
+--   railButton               { label = string|fn, run = fn, active = fn? }
+--   hideInCombat             true hides settings, reports and the minimap
+--                            button in combat and refuses to open settings
 function HC:Init(spec)
     assert(type(spec) == "table", "HammerCore:Init needs a spec")
     assert(type(spec.name) == "string", "HammerCore:Init needs a name")
@@ -103,9 +106,25 @@ function HC.LoginMessage(coloured)
         .. " for settings, " .. HC.Command() .. " help for commands"
 end
 
+local function hideForCombat()
+    if HC.Settings then HC.Settings:Hide() end
+    if HC.Copy and HC.Copy.frame then HC.Copy.frame:Hide() end
+    if HC.Minimap and HC.Minimap.button then HC.Minimap.button:Hide() end
+end
+
 -- Called by the addon once its saved variables are ready.
 function HC:Start()
     local state = HC.State()
+    if HC.spec.hideInCombat and not self.combatFrame then
+        local frame = CreateFrame("Frame")
+        frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+        frame:RegisterEvent("PLAYER_REGEN_ENABLED")
+        frame:SetScript("OnEvent", function(_, event)
+            if event == "PLAYER_REGEN_DISABLED" then hideForCombat()
+            elseif HC.Minimap then HC.Minimap:Update() end
+        end)
+        self.combatFrame = frame
+    end
     if self.Minimap then self.Minimap:Create() end
     if self.Settings then self.Settings:CreateLauncher() end
     if state and state.startupMessage then print(HC.LoginMessage(true)) end

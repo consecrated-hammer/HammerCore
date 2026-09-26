@@ -55,6 +55,8 @@ HC:Init({
     minimap = { rightClick = fn, rightClickLabel = "lock" },
     toggle = { help = "Show or hide the frame", run = fn },
     resetPosition = fn,
+    railButton = { label = fn, run = fn, active = fn },  -- optional rail action
+    hideInCombat = true,                                  -- optional
 })
 
 HC.Commands:Add({ name = "scan", section = "Bags", help = "Rescan bags", run = fn })
@@ -84,7 +86,8 @@ and reloads, unless the addon supplies `spec.resetSettings`.
 
 ### Controls
 
-`HC.UI` provides `Check`, `Slider`, `Dropdown`, `MultiSelect`, `Button`,
+`HC.UI` provides `Check`, `Slider`, `Dropdown`, `MultiSelect`,
+`SearchPicker`, `TextInput`, `Button`,
 `SelectButton`, `Header`, `SectionLabel`, `Text`, `Card`, `PageLink`,
 `AttachHint` and `ShowColourPicker`. Each builder takes `(panel, ..., y)`
 and returns the control and the next `y`.

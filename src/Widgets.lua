@@ -391,6 +391,131 @@ function UI.MultiSelect(panel, label, hint, y, spec, width)
     return btn, y - 54
 end
 
+-- A searchable list for large catalogues such as the client's emotes.
+-- spec = { items = function() -> { { value, label } }, get, set, width }
+function UI.SearchPicker(panel, label, hint, y, spec, width, offset)
+    local row = UI.Row(panel, y, 30, label, hint, width)
+    local pickerWidth = spec.width or 220
+    local button = UI.SelectButton(row, pickerWidth, 30)
+    button:SetPoint("LEFT", row, "LEFT", offset or 150, 0)
+    local function labelFor(value)
+        for _, item in ipairs(spec.items()) do
+            if item.value == value then return item.label end
+        end
+        return tostring(value or "—")
+    end
+    local function render() button:SetText(labelFor(spec.get())) end
+    local list, dismiss, rows
+    local function ensure()
+        if list then return end
+        dismiss = CreateFrame("Button", nil, UIParent)
+        dismiss:SetFrameStrata("FULLSCREEN_DIALOG")
+        dismiss:SetFrameLevel(199)
+        dismiss:SetAllPoints(UIParent)
+        dismiss:EnableMouse(true)
+        list = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        list:SetFrameStrata("FULLSCREEN_DIALOG")
+        list:SetFrameLevel(200)
+        list:SetClampedToScreen(true)
+        list:SetSize(pickerWidth, 330)
+        T.Surface(list, "menu", "menuEdge")
+        local search = CreateFrame("EditBox", nil, list, "BackdropTemplate")
+        search:SetSize(pickerWidth - 16, 24)
+        search:SetPoint("TOPLEFT", 8, -8)
+        search:SetAutoFocus(false)
+        search:SetFontObject(ChatFontNormal)
+        search:SetTextInsets(6, 6, 0, 0)
+        T.Surface(search, "rail", "edge")
+        search:SetScript("OnEscapePressed", function() list:Hide() end)
+        local scroll = CreateFrame("ScrollFrame", nil, list, "UIPanelScrollFrameTemplate")
+        scroll:SetPoint("TOPLEFT", 6, -40)
+        scroll:SetPoint("BOTTOMRIGHT", -28, 6)
+        local content = CreateFrame("Frame", nil, scroll)
+        content:SetSize(pickerWidth - 36, 1)
+        scroll:SetScrollChild(content)
+        rows = {}
+        list.search, list.scroll, list.content = search, scroll, content
+        list:SetScript("OnHide", function() dismiss:Hide() end)
+        dismiss:SetScript("OnClick", function() list:Hide() end)
+        list:Hide()
+    end
+    local function populate()
+        local query = (list.search:GetText() or ""):lower()
+        local count = 0
+        for index, item in ipairs(spec.items()) do
+            local entry = rows[index]
+            if not entry then
+                entry = CreateFrame("Button", nil, list.content, "BackdropTemplate")
+                entry:SetHeight(22)
+                T.Surface(entry, "menu")
+                entry.label = UI.FontString(entry, "GameFontHighlightSmall")
+                entry.label:SetPoint("LEFT", 8, 0)
+                entry:HookScript("OnEnter", function(self) self:SetBackdropColor(T.Unpack("menuActive")) end)
+                entry:HookScript("OnLeave", function(self) self:SetBackdropColor(T.Unpack("menu")) end)
+                rows[index] = entry
+            end
+            if query == "" or item.label:lower():find(query, 1, true) then
+                entry:SetWidth(pickerWidth - 36)
+                entry:ClearAllPoints()
+                entry:SetPoint("TOPLEFT", 0, -count * 22)
+                entry.label:SetText(item.label)
+                T.Text(entry.label, spec.get() == item.value and "selected" or "text")
+                entry:SetScript("OnClick", function()
+                    spec.set(item.value)
+                    render()
+                    refreshAll(panel)
+                    list:Hide()
+                end)
+                entry:Show()
+                count = count + 1
+            else
+                entry:Hide()
+            end
+        end
+        for index = #spec.items() + 1, #rows do rows[index]:Hide() end
+        list.content:SetHeight(math.max(1, count * 22))
+        list.scroll:SetVerticalScroll(0)
+    end
+    button:SetScript("OnClick", function(self)
+        ensure()
+        if list:IsShown() then list:Hide(); return end
+        list.search:SetScript("OnTextChanged", populate)
+        list.search:SetText("")
+        populate()
+        list:ClearAllPoints()
+        list:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -5)
+        dismiss:Show()
+        list:Show()
+        list.search:SetFocus()
+    end)
+    UI.AttachHint(button, label, hint)
+    onRefresh(panel, render)
+    render()
+    return row, y - 34, button
+end
+
+-- A single-line text field that saves on Enter or when it loses focus.
+function UI.TextInput(panel, label, hint, y, get, set, width, inputWidth)
+    local row = UI.Row(panel, y, 30, label, hint, width)
+    local box = CreateFrame("EditBox", nil, row, "BackdropTemplate")
+    box:SetSize(inputWidth or 300, 26)
+    box:SetPoint("LEFT", row, "LEFT", 150, 0)
+    box:SetAutoFocus(false)
+    box:SetFontObject(ChatFontNormal)
+    box:SetTextInsets(8, 8, 0, 0)
+    T.Surface(box, "rail", "edge")
+    local function save(self) set(self:GetText() or "") end
+    box:SetScript("OnEnterPressed", function(self) save(self); self:ClearFocus() end)
+    box:SetScript("OnEditFocusLost", save)
+    box:SetScript("OnEscapePressed", function(self) self:SetText(get() or ""); self:ClearFocus() end)
+    UI.AttachHint(box, label, hint)
+    onRefresh(panel, function()
+        if not (box.HasFocus and box:HasFocus()) then box:SetText(get() or "") end
+    end)
+    box:SetText(get() or "")
+    return row, y - 34, box
+end
+
 -- ── Layout helpers ─────────────────────────────────────────────────────────
 
 -- A section heading with a rule running to the right edge.

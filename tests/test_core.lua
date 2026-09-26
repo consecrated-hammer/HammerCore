@@ -206,6 +206,77 @@ do
     equal(HC.Settings:IsShown(), false, "left-click again closes settings")
 end
 
+-- ── Rail button and combat hiding ─────────────────────────────────────────
+do
+    local previewing = false
+    local HC = addon({
+        hideInCombat = true,
+        railButton = {
+            label = function() return previewing and "Hide preview" or "Preview on screen" end,
+            run = function() previewing = not previewing end,
+            active = function() return previewing end,
+        },
+    })
+    HC:Start()
+    HC.Settings:Show()
+    local rail = HC.Settings.railButton
+    equal(rail:GetText(), "Preview on screen", "the rail button shows its label")
+    wow.Click(rail)
+    equal(previewing, true, "the rail button runs its action")
+    equal(rail:GetText(), "Hide preview", "the label follows the action's state")
+
+    InCombatLockdown = function() return true end
+    HC.combatFrame.scripts.OnEvent(HC.combatFrame, "PLAYER_REGEN_DISABLED")
+    equal(HC.Settings:IsShown(), false, "combat hides settings")
+    equal(HC.Minimap.button:IsShown(), false, "combat hides the minimap button")
+    equal(HC.Settings:Show(), false, "settings refuse to open in combat")
+    InCombatLockdown = function() return false end
+    HC.combatFrame.scripts.OnEvent(HC.combatFrame, "PLAYER_REGEN_ENABLED")
+    equal(HC.Minimap.button:IsShown(), true, "the minimap button returns after combat")
+end
+
+-- ── Search picker and text input ───────────────────────────────────────────
+do
+    local HC = addon()
+    local chosen, message = "THANK", "Thanks!"
+    local picker, input
+    HC.Settings:NewPage({ name = "Thanks" }, function(panel, y)
+        _, y, picker = HC.UI.SearchPicker(panel, "Emote", nil, y, {
+            items = function() return { { value = "THANK", label = "Thank" }, { value = "BOW", label = "Bow" },
+                { value = "CHEER", label = "Cheer" } } end,
+            get = function() return chosen end,
+            set = function(value) chosen = value end,
+        })
+        _, y, input = HC.UI.TextInput(panel, "Message", nil, y,
+            function() return message end, function(value) message = value end)
+        return y
+    end)
+    HC:Start()
+    HC.Settings:Show()
+    equal(picker:GetText(), "Thank", "the picker shows the current label")
+    wow.Click(picker)
+    local list
+    for _, frame in ipairs(wow.frames) do
+        if frame.search then list = frame end
+    end
+    list.search:SetText("bo")
+    list.search.scripts.OnTextChanged(list.search)
+    local visible = {}
+    for _, frame in ipairs(wow.frames) do
+        if frame.parent == list.content and frame:IsShown() then visible[#visible + 1] = frame end
+    end
+    equal(#visible, 1, "typing filters the list")
+    wow.Click(visible[1])
+    equal(chosen, "BOW", "clicking an entry chooses it")
+    equal(picker:GetText(), "Bow", "the picker shows the new choice")
+    equal(list:IsShown(), false, "choosing closes the list")
+
+    equal(input:GetText(), "Thanks!", "the input shows the saved text")
+    input:SetText("Cheers, {player}")
+    input.scripts.OnEnterPressed(input)
+    equal(message, "Cheers, {player}", "Enter saves the text")
+end
+
 -- ── Two addons, two private copies ─────────────────────────────────────────
 do
     wow.Install(META)
