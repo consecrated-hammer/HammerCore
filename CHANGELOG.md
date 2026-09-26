@@ -13,6 +13,7 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   single-line text.
 - `spec.railButton` pins one action, such as a live preview, to the foot of
   the settings rail.
+- An invalid saved settings-window position is discarded instead of used.
 - `spec.hideInCombat` hides settings, reports and the minimap button in
   combat, and refuses to open settings until combat ends.
 

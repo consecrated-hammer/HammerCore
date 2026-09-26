@@ -8,7 +8,7 @@ local addonName, ns = ...
 local HC = {}
 ns.HammerCore = HC
 
-HC.VERSION = "0.1.1"
+HC.VERSION = "0.1.2"
 HC.addonName = addonName
 
 -- The one chat colour every addon uses for its name prefix.
@@ -94,12 +94,24 @@ function HC.State()
         if state[key] == nil then state[key] = value end
     end
     if type(state.minimapAngle) ~= "number" then state.minimapAngle = DEFAULTS.minimapAngle end
+    if state.settingsPoint ~= nil and not HC.ValidPoint(state.settingsPoint) then state.settingsPoint = nil end
     if HC.Theme and not HC.Theme.registry[state.theme] then state.theme = DEFAULTS.theme end
     return state
 end
 
 -- The login line names the addon in the chat colour but, unlike other
 -- messages, has no colon: "Name v1.2.3 loaded - type ...".
+local ANCHORS = { TOPLEFT = true, TOP = true, TOPRIGHT = true, LEFT = true, CENTER = true,
+    RIGHT = true, BOTTOMLEFT = true, BOTTOM = true, BOTTOMRIGHT = true }
+
+-- A saved position is { point, relativePoint, x, y }; anything else, including
+-- NaN offsets from a bad drag, is discarded rather than handed to SetPoint.
+function HC.ValidPoint(point)
+    if type(point) ~= "table" then return false end
+    local x, y = tonumber(point[3]), tonumber(point[4])
+    return ANCHORS[point[1]] and ANCHORS[point[2]] and x and y and x == x and y == y and true or false
+end
+
 function HC.LoginMessage(coloured)
     local name = coloured and ("|cff" .. HC.CHAT_COLOUR .. HC.name .. "|r") or HC.name
     return name .. " v" .. tostring(HC.VERSION_TEXT) .. " loaded - type " .. HC.Command()

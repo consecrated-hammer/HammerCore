@@ -50,6 +50,10 @@ do
     equal(state.minimap, true, "missing values take defaults")
     equal(state.theme, "modern", "theme defaults to modern")
     equal(saved.unrelated, true, "unrelated addon keys are untouched")
+    saved.hammerCore.settingsPoint = { "NOWHERE", "CENTER", 1, 2 }
+    equal(HC.State().settingsPoint, nil, "an invalid settings position is discarded")
+    saved.hammerCore.settingsPoint = { "TOPLEFT", "TOPLEFT", 40, -60 }
+    equal(HC.State().settingsPoint[3], 40, "a valid settings position is kept")
     saved.hammerCore.theme = "bogus"
     equal(HC.State().theme, "modern", "an unknown theme is repaired")
 end
