@@ -138,6 +138,12 @@ function wow.Install(metadata)
         local values = metadata[addon]
         return values and values[key] or nil
     end }
+    -- WoW's global aliases for the string and table libraries.
+    strmatch, strfind, strsub, strlen = string.match, string.find, string.sub, string.len
+    strlower, strupper, strrep, format = string.lower, string.upper, string.rep, string.format
+    gsub, strbyte, strchar = string.gsub, string.byte, string.char
+    tinsert, tremove, tconcat = table.insert, table.remove, table.concat
+    wipe = function(t) for k in pairs(t) do t[k] = nil end return t end
     print = function(...)
         local parts = {}
         for i = 1, select("#", ...) do parts[#parts + 1] = tostring(select(i, ...)) end
