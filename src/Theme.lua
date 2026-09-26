@@ -30,6 +30,8 @@ Theme.registry = {
             section = { 0.82, 0.85, 0.90, 1 },
             text = { 1, 1, 1, 1 },
             danger = { 0.788, 0.337, 0.306, 1 },
+            -- Warm parchment for whimsical copy such as About tips.
+            flavour = { 0.93, 0.85, 0.66, 1 },
             transparent = { 0, 0, 0, 0 },
         },
     },

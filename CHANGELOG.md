@@ -13,7 +13,19 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   label responded.
 - The first rail heading lines up with the page title.
 
+### Changed
+
+- Visibility puts the addon's own sections first, then "Other" with
+  "Show minimap button" and "Show startup message", matching Salve.
+- About has one centred, whimsical layout for every addon: the note
+  heading, the addon icon as a button with a caption, and a rotating tip in
+  a storybook face. The icon shows a new tip and prints to chat.
+
 ### Added
+
+- Multi-select items may have function labels and a `disabled` state,
+  re-read each time the menu opens.
+- A `flavour` theme colour for whimsical copy.
 
 - `Commands:AddAction` lists non-command actions, such as mouse clicks, in
   help and on the Commands page.

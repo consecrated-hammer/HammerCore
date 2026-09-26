@@ -229,6 +229,40 @@ do
     equal(resetButton:GetText(), "Reset panel", "the reset button is labelled")
 end
 
+-- ── Visibility and About layouts ───────────────────────────────────────────
+do
+    local applied = 0
+    local HC = addon({
+        about = { note = "FROM THE FORGE", tips = { "Tip one", "Tip two" }, action = "Polish the anvil",
+            onApply = function() applied = applied + 1 end },
+    })
+    local headings = {}
+    local header = HC.UI.Header
+    HC.UI.Header = function(panel, text, y)
+        headings[#headings + 1] = text
+        return header(panel, text, y)
+    end
+    HC.spec.visibility = function(panel, y) return select(2, HC.UI.Header(panel, "Bar", y)) end
+    HC:Start()
+    HC.Settings:Show("Visibility")
+    equal(headings[1] .. "," .. headings[2], "Bar,Other", "addon sections come first, Other last")
+    HC.UI.Header = header
+
+    HC.Settings:Show("About")
+    wow.Click(HC.Pages.aboutIcon)
+    local said = wow.LastPrint()
+    equal(said == "TestAddon: Tip one" or said == "TestAddon: Tip two", true, "the icon prints a tip to chat")
+    equal(applied, 1, "the icon runs the addon's apply hook")
+end
+
+do
+    local HC = addon({ about = { tips = { "Only tip" }, chat = { "You apply TestAddon." } } })
+    HC:Start()
+    HC.Settings:Show("About")
+    wow.Click(HC.Pages.aboutIcon)
+    equal(wow.LastPrint(), "TestAddon: You apply TestAddon.", "chat lines replace the tip in chat")
+end
+
 -- ── Multi-select menu ──────────────────────────────────────────────────────
 do
     local HC = addon()
@@ -254,6 +288,14 @@ do
         if frame.item and frame.item.label == "Never" then never = frame end
     end
     equal(never.check:IsMouseEnabled(), false, "the tick passes clicks to its row")
+    never.item.disabled = function() return true end
+    never.item.label = function() return "Never (missing)" end
+    select.scripts.OnClick(select)
+    select.scripts.OnClick(select)
+    equal(never.check.Text:GetText(), "Never (missing)", "labels are re-read when the menu opens")
+    wow.Click(never)
+    equal(mode, "ALWAYS", "a disabled entry cannot be chosen")
+    never.item.disabled, never.item.label = nil, "Never"
     wow.Click(never)
     equal(mode, "NEVER", "clicking the row chooses it")
     equal(select:GetText(), "NEVER", "the summary updates")

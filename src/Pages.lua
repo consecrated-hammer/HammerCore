@@ -18,17 +18,19 @@ HC.Pages = Pages
 Pages.visibility = { name = "Visibility", group = "main", standard = true,
     description = "When things show." }
 Pages.visibility.build = function(panel, y)
-    _, y = UI.Header(panel, "General", y)
-    _, y = UI.Check(panel, "Show startup message", "Print the loaded version when you log in.", y,
-        function() return HC.State().startupMessage end,
-        function(value) HC.State().startupMessage = value end)
+    -- The addon's own sections come first; the shared toggles sit under
+    -- "Other" at the bottom, in the order Salve established.
+    if HC.spec.visibility then y = HC.spec.visibility(panel, y) - 8 end
+    _, y = UI.Header(panel, "Other", y)
     _, y = UI.Check(panel, "Show minimap button", "Show the " .. HC.name .. " button on the minimap.", y,
         function() return HC.State().minimap end,
         function(value)
             HC.State().minimap = value
             HC.Minimap:Update()
         end)
-    if HC.spec.visibility then y = HC.spec.visibility(panel, y - 8) end
+    _, y = UI.Check(panel, "Show startup message", "Print the loaded version when you log in.", y,
+        function() return HC.State().startupMessage end,
+        function(value) HC.State().startupMessage = value end)
     return y
 end
 
@@ -149,6 +151,15 @@ troubleshooting.build = function(panel, y)
 end
 
 -- ── About ──────────────────────────────────────────────────────────────────
+-- Every About page has the same shape: the version card, then a centred,
+-- deliberately whimsical block — the note heading, the addon's icon as a
+-- button with a caption, and a rotating tip in a storybook face.  Clicking
+-- the icon shows a new tip and says something in chat.
+--   spec.about = { note = "FROM THE FORGE", tips = { ... },
+--                  action = "Polish the anvil",       -- icon caption
+--                  chat = { ... }?,                   -- lines to print; else the tip
+--                  onApply = function() end?,         -- e.g. a sound
+--                  credit = "..."? }
 
 local about = { name = "About", group = "reference", standard = true,
     description = "Version and credits." }
@@ -177,31 +188,81 @@ about.build = function(panel, y)
     }, "\n"))
 
     if spec.tips and #spec.tips > 0 then
-        local note
-        note, y = UI.Card(panel, y, 76)
-        local heading = UI.FontString(note, "GameFontHighlightSmall", "accent")
-        heading:SetPoint("TOPLEFT", 12, -10)
+        -- A full-width holder so every piece centres on the content column.
+        local holder = CreateFrame("Frame", nil, panel)
+        holder:SetPoint("TOPLEFT", UI.PAD, y - 6)
+        holder:SetSize(UI.CONTENT_WIDTH, 230)
+
+        local heading = UI.FontString(holder, "GameFontNormal", "accent")
+        heading:SetPoint("TOP", 0, 0)
         heading:SetText(spec.note or "NOTE")
-        local tip = UI.FontString(note, "GameFontHighlightSmall")
-        tip:SetPoint("TOPLEFT", 12, -31)
-        tip:SetWidth(UI.CONTENT_WIDTH - 30)
-        tip:SetJustifyH("LEFT")
+
+        local icon = CreateFrame("Button", nil, holder)
+        icon:SetSize(64, 64)
+        icon:SetPoint("TOP", heading, "BOTTOM", 0, -14)
+        -- Normal and pushed textures, so the icon dips when pressed.
+        icon:SetNormalTexture(HC.spec.icon)
+        icon:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+        icon:SetPushedTexture(HC.spec.icon)
+        local pushed = icon.GetPushedTexture and icon:GetPushedTexture()
+        if pushed then
+            pushed:ClearAllPoints()
+            pushed:SetPoint("TOPLEFT", 2, -2)
+            pushed:SetPoint("BOTTOMRIGHT", -2, 2)
+        end
+        Pages.aboutIcon = icon
+
+        local caption = UI.FontString(holder, "GameFontDisableSmall", "muted")
+        caption:SetPoint("TOP", icon, "BOTTOM", 0, -6)
+        caption:SetText(spec.action or ("Apply " .. HC.name))
+
+        local tipCard = CreateFrame("Frame", nil, holder, "BackdropTemplate")
+        tipCard:SetPoint("TOP", caption, "BOTTOM", 0, -12)
+        tipCard:SetSize(460, 58)
+        T.Surface(tipCard, "raised", "edge")
+        local tip = UI.FontString(tipCard, "GameFontNormal", "flavour")
+        tip:SetPoint("LEFT", 16, 0)
+        tip:SetPoint("RIGHT", -16, 0)
+        tip:SetJustifyH("CENTER")
+        -- The closest the client has to a storybook face; the default font
+        -- stands in wherever it is missing.
+        if _G.MailFont_Large and tip.SetFontObject then tip:SetFontObject("MailFont_Large") end
+        local fade = tip.CreateAnimationGroup and tip:CreateAnimationGroup()
+        if fade then
+            local alpha = fade:CreateAnimation("Alpha")
+            alpha:SetFromAlpha(0)
+            alpha:SetToAlpha(1)
+            alpha:SetDuration(0.35)
+        end
+
         local last
         local function show()
             local nextTip
             repeat nextTip = math.random(#spec.tips) until #spec.tips == 1 or nextTip ~= last
             last = nextTip
             tip:SetText(spec.tips[nextTip])
+            if fade then fade:Stop(); fade:Play() end
             return spec.tips[nextTip]
         end
         Pages.NextTip = show
+        local function apply()
+            local shown = show()
+            local line = shown
+            if spec.chat and #spec.chat > 0 then line = spec.chat[math.random(#spec.chat)] end
+            HC.Print(line)
+            if spec.onApply then spec.onApply() end
+        end
+        Pages.Apply = apply
+        icon:SetScript("OnClick", apply)
+        UI.AttachHint(icon, spec.action or ("Apply " .. HC.name), "Entirely necessary. Probably.")
         UI.OnRefresh(panel, show)
-        if spec.extra then y = spec.extra(panel, y, note) end
-    elseif spec.extra then
-        y = spec.extra(panel, y)
+        y = y - 6 - 180
     end
     if spec.credit then
-        _, y = UI.Text(panel, spec.credit, y)
+        local credit = UI.FontString(panel, "GameFontDisableSmall", "muted")
+        credit:SetPoint("TOP", panel, "TOPLEFT", UI.PAD + UI.CONTENT_WIDTH / 2, y)
+        credit:SetText(spec.credit)
+        y = y - 20
     end
     return y - 8
 end

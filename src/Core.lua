@@ -8,7 +8,7 @@ local addonName, ns = ...
 local HC = {}
 ns.HammerCore = HC
 
-HC.VERSION = "0.1.4"
+HC.VERSION = "0.1.5"
 HC.addonName = addonName
 
 -- The one chat colour every addon uses for its name prefix.
@@ -53,7 +53,8 @@ end
 --                              minimapAngle = "oldKey", settingsPoint = "oldKey" }
 --   diagnostics              function returning the copyable report text
 --   status                   function returning the Troubleshooting status text
---   about                    { tips = {...}, credit = "...", note = "HEADING" }
+--   about                    { note, tips, action, chat?, onApply?, credit? }
+--                            (see Pages.lua)
 --   minimap                  { rightClick = fn, rightClickLabel = "..." }
 --   toggle, lock, unlock     { run = fn, help = "..." } shared verbs
 --   resetPosition            fn; resetSettings fn (defaults to a full wipe)

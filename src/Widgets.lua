@@ -316,7 +316,8 @@ function UI.Dropdown(panel, label, hint, y, values, labels, get, set, width, off
 end
 
 -- A menu of radio modes and combinable conditions, summarised on the button.
--- spec = { items = { { label, radio?, heading?, get, set } }, summary = fn }
+-- spec = { items = { { label, radio?, heading?, get, set, disabled? } }, summary = fn }
+-- label and disabled may be functions; they are re-read each time it opens.
 function UI.MultiSelect(panel, label, hint, y, spec, width)
     local title = UI.FontString(panel, "GameFontHighlightSmall", "muted")
     title:SetPoint("TOPLEFT", UI.PAD, y)
@@ -326,7 +327,12 @@ function UI.MultiSelect(panel, label, hint, y, spec, width)
     local function render() btn:SetText(spec.summary()) end
     local menu, dismiss, controls
     local function refreshChecks()
-        for _, control in ipairs(controls) do control.check:SetChecked(control.item.get() and true or false) end
+        for _, control in ipairs(controls) do
+            local item = control.item
+            control.check:SetChecked(item.get() and true or false)
+            control.check.Text:SetText(resolve(item.label))
+            T.Text(control.check.Text, resolve(item.disabled) and "muted" or "text")
+        end
     end
     local function ensure()
         if menu then return end
@@ -359,9 +365,10 @@ function UI.MultiSelect(panel, label, hint, y, spec, width)
                 -- reach the row, or only the label would respond.
                 choice.check:EnableMouse(false)
                 if item.radio then choice.check:SetSize(14, 14) end
-                choice.check.Text:SetText(item.label)
+                choice.check.Text:SetText(resolve(item.label))
                 choice.item = item
                 choice:SetScript("OnClick", function(self)
+                    if resolve(self.item.disabled) then return end
                     if self.item.radio then self.item.set(true) else self.item.set(not self.item.get()) end
                     refreshAll(panel)
                     render()
