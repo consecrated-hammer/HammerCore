@@ -168,7 +168,8 @@ end
 -- The first button whose label (its Text font string) reads exactly this.
 function wow.FindButton(label)
     for _, frame in ipairs(wow.frames) do
-        if frame.Text and frame.Text.text == label then return frame end
+        local text = rawget(frame, "Text")
+        if type(text) == "table" and text.text == label then return frame end
     end
 end
 
