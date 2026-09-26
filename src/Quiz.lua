@@ -102,14 +102,25 @@ function Quiz:ResultText()
     return "Lore quiz: " .. self.score .. "/" .. #self.run .. ". " .. self.verdict
 end
 
+local function sendChat(message, channel)
+    if C_ChatInfo and type(C_ChatInfo.SendChatMessage) == "function" then
+        C_ChatInfo.SendChatMessage(message, channel)
+        return true
+    end
+    if type(SendChatMessage) == "function" then
+        SendChatMessage(message, channel)
+        return true
+    end
+end
+
 function Quiz:Publish(destination)
     local text = self:ResultText()
     if destination == "TEXT" then
         HC.Print(text)
     elseif destination == "PARTY" and not (IsInGroup and IsInGroup()) then
         HC.Print("You are not in a party. " .. text)
-    elseif SendChatMessage then
-        SendChatMessage(text, destination)
+    elseif sendChat(text, destination) then
+        return
     else
         HC.Print(text)
     end

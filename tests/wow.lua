@@ -153,9 +153,10 @@ function wow.Install(metadata)
         wow.printed[#wow.printed + 1] = table.concat(parts, " ")
     end
     IsInGroup = function() return false end
-    SendChatMessage = function(message, channel)
+    C_ChatInfo = { SendChatMessage = function(message, channel)
         wow.sentMessages[#wow.sentMessages + 1] = { message = message, channel = channel }
-    end
+    end }
+    SendChatMessage = function() error("legacy SendChatMessage must not be used when C_ChatInfo is available") end
 end
 
 -- Loads a copy of HammerCore into a fresh addon namespace, in XML order.
