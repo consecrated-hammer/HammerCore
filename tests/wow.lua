@@ -63,6 +63,26 @@ function methods:GetHighlightTexture() return self.highlight end
 function methods:CreateFontString() return wow.CreateRegion(self, "FontString") end
 function methods:CreateTexture() return wow.CreateRegion(self, "Texture") end
 function methods:Raise() self.raised = true end
+function methods:SetFrameLevel(level) self.frameLevel = level end
+function methods:GetFrameLevel() return self.frameLevel or 1 end
+function methods:SetFrameStrata(strata) self.strata = strata end
+function methods:GetFrameStrata() return self.strata or "MEDIUM" end
+function methods:SetAttribute(key, value) self.attributes = self.attributes or {}; self.attributes[key] = value end
+function methods:GetAttribute(key) return self.attributes and self.attributes[key] end
+function methods:SetID(id) self.id = id end
+function methods:GetID() return self.id or 0 end
+function methods:GetScale() return 1 end
+function methods:GetAlpha() return self.alpha or 1 end
+function methods:SetAlpha(alpha) self.alpha = alpha end
+function methods:GetNumPoints() return #self.points end
+function methods:GetLeft() return 0 end
+function methods:GetRight() return 0 end
+function methods:GetTop() return 0 end
+function methods:GetBottom() return 0 end
+function methods:GetChildren() return end
+function methods:GetRegions() return end
+function methods:CreateAnimationGroup() return wow.CreateRegion(self, "AnimationGroup") end
+function methods:CreateAnimation() return wow.CreateRegion(self, "Animation") end
 
 -- Widget methods are capitalised; fields an addon stores are not.  Only an
 -- unknown method becomes a no-op, so a missing field still reads as nil.
