@@ -9,6 +9,14 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Quiz sharing: Say and Party are secure macro buttons, so one click posts
+  `/s` or `/p` with the result as the player's own macro; addon code
+  calling the chat API was blocked on WoW Forever. Share is disabled in
+  combat and during a keystone, PvP match or encounter (Midnight's addon
+  restrictions), and Party is disabled when you are not in a group.
+
+### Changed
+
 - The Theme page and `theme` command are withdrawn, and Classic is switched
   off until it is reworked. A saved Classic choice falls back to Modern. The
   Classic code stays and is still built by the tests.

@@ -102,36 +102,78 @@ function Quiz:ResultText()
     return "Lore quiz: " .. self.score .. "/" .. #self.run .. ". " .. self.verdict
 end
 
--- Addon code may not send Say outdoors, even from a click: on WoW Forever
--- both chat-send APIs raise ADDON_ACTION_BLOCKED, while the same call typed
--- as /run is allowed.  So the addon fills the player's chat box and the
--- player sends it with Enter.  The copy window remains a last resort.
-local function openChat(text)
-    local util = ChatFrameUtil and ChatFrameUtil.OpenChat
-    if type(util) == "function" then
-        util(text)
-        return true
+-- Say and Party are secure macro buttons.  Addon code calling the chat API
+-- was blocked on WoW Forever even from a click, while the same line typed as
+-- /run was allowed; a secure button runs "/s ..." as the player's own macro,
+-- so one click posts.  The macro is armed when the share popout opens, which
+-- is only possible out of combat.
+
+-- Chat from addons and macros is refused in combat-restricted contexts
+-- (Midnight's addon restrictions); Share is disabled while any is active.
+local RESTRICTIONS = { "Combat", "Encounter", "ChallengeMode", "PvPMatch" }
+
+function Quiz.ChatRestricted()
+    if InCombatLockdown and InCombatLockdown() then return true end
+    local active = C_RestrictedActions and C_RestrictedActions.IsAddOnRestrictionActive
+    local types = Enum and Enum.AddOnRestrictionType
+    if type(active) == "function" and types then
+        for _, name in ipairs(RESTRICTIONS) do
+            if types[name] ~= nil then
+                local ok, on = pcall(active, types[name])
+                if ok and on == true then return true end
+            end
+        end
     end
-    if type(ChatFrame_OpenChat) == "function" then
-        ChatFrame_OpenChat(text)
-        return true
-    end
-    return false
+    return IsEncounterInProgress and IsEncounterInProgress() and true or false
+end
+
+local function inGroup() return IsInGroup and IsInGroup() and true or false end
+
+-- A secure button styled like HammerCore's own; its macro is set later.
+local function macroButton(parent, label)
+    local button = CreateFrame("Button", nil, parent, "SecureActionButtonTemplate,BackdropTemplate")
+    button:SetSize(98, 22)
+    T.Surface(button, "raised", "edge")
+    button.Text = UI.FontString(button)
+    button.Text:SetAllPoints()
+    button.Text:SetJustifyH("CENTER")
+    button.Text:SetText(label)
+    button:RegisterForClicks("LeftButtonUp")
+    -- Mouse-up regardless of the player's ActionButtonUseKeyDown setting.
+    button:SetAttribute("useOnKeyDown", false)
+    button:SetAttribute("type", "macro")
+    return button
+end
+
+-- Enable or disable a destination, keeping its label legible either way.
+local function setUsable(button, usable)
+    button:SetEnabled(usable)
+    T.Text(button.Text, usable and "text" or "muted")
+end
+
+function Quiz:ArmShare()
+    local frame = self.frame
+    if not frame or InCombatLockdown and InCombatLockdown() then return false end
+    local text = self:ResultText()
+    frame.destinations.SAY:SetAttribute("macrotext", "/s " .. text)
+    local party = inGroup()
+    frame.destinations.PARTY:SetAttribute("macrotext", party and ("/p " .. text) or nil)
+    setUsable(frame.destinations.PARTY, party)
+    return true
+end
+
+-- Share is usable only when the result is showing and chat is allowed.
+function Quiz:UpdateShare()
+    local frame = self.frame
+    if not frame then return end
+    local usable = self.phase == "done" and #(self.run or {}) > 0 and not Quiz.ChatRestricted()
+    setUsable(frame.share, usable)
+    if not usable then frame.destinationPopup:Hide() end
+    if usable and frame.destinationPopup:IsShown() then self:ArmShare() end
 end
 
 function Quiz:Publish(destination)
-    local text = self:ResultText()
-    if destination == "TEXT" then
-        HC.Print(text)
-    elseif destination == "PARTY" and not (IsInGroup and IsInGroup()) then
-        HC.Print("You are not in a party. " .. text)
-    else
-        local command = destination == "PARTY" and "/p " or "/s "
-        if not openChat(command .. text) then
-            HC.Copy:Show("Share to " .. DESTINATION_LABELS[destination], command .. text,
-                "Copy, open chat, paste, then press Enter.")
-        end
-    end
+    if destination == "TEXT" then HC.Print(self:ResultText()) end
 end
 
 function Quiz:Create()
@@ -190,13 +232,21 @@ function Quiz:Create()
     frame.destinationPopup:Hide()
     frame.destinations = {}
     for index, destination in ipairs(DESTINATIONS) do
-        local button = UI.Button(frame.destinationPopup, 98, 22)
+        local button
+        if destination == "TEXT" then
+            button = UI.Button(frame.destinationPopup, 98, 22)
+            button:SetText(DESTINATION_LABELS[destination])
+            button:SetScript("OnClick", function()
+                frame.destinationPopup:Hide()
+                Quiz:Publish(destination)
+            end)
+        else
+            -- The secure template owns OnClick and runs the macro; PostClick
+            -- only tidies up afterwards.
+            button = macroButton(frame.destinationPopup, DESTINATION_LABELS[destination])
+            button:SetScript("PostClick", function() frame.destinationPopup:Hide() end)
+        end
         button:SetPoint("TOP", 0, -6 - (index - 1) * 24)
-        button:SetText(DESTINATION_LABELS[destination])
-        button:SetScript("OnClick", function()
-            frame.destinationPopup:Hide()
-            Quiz:Publish(destination)
-        end)
         frame.destinations[destination] = button
     end
 
@@ -208,7 +258,11 @@ function Quiz:Create()
     frame.share:SetPoint("BOTTOM", 0, 16)
     frame.share:SetText("Share result")
     frame.share:SetScript("OnClick", function()
-        frame.destinationPopup:SetShown(not frame.destinationPopup:IsShown())
+        if frame.destinationPopup:IsShown() then
+            frame.destinationPopup:Hide()
+        elseif not Quiz.ChatRestricted() and Quiz:ArmShare() then
+            frame.destinationPopup:Show()
+        end
     end)
     frame.done = UI.Button(frame, 104, 24)
     frame.done:SetPoint("BOTTOMRIGHT", -16, 16)
@@ -216,6 +270,12 @@ function Quiz:Create()
     frame.done:SetScript("OnClick", function() frame:Hide() end)
 
     frame:SetScript("OnUpdate", function(_, elapsed) Quiz:Tick(elapsed) end)
+    -- Combat, restriction and group changes re-check whether Share can work.
+    for _, event in ipairs({ "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_ENABLED",
+        "ADDON_RESTRICTION_STATE_CHANGED", "GROUP_ROSTER_UPDATE" }) do
+        pcall(frame.RegisterEvent, frame, event)
+    end
+    frame:SetScript("OnEvent", function() Quiz:UpdateShare() end)
     frame:SetScript("OnHide", function()
         Quiz.phase = nil
         frame.destinationPopup:Hide()
@@ -307,6 +367,7 @@ function Quiz:Finish()
     frame.destinationPopup:Hide()
     frame.done:Show()
     self.verdict = verdict
+    self:UpdateShare()
 end
 
 function Quiz.Verdicts() return VERDICTS end

@@ -138,38 +138,51 @@ do
     equal(wow.LastPrint(), "TestAddon: Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
         "text shares the concise result through addon chat")
 
-    local opened = {}
-    ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
-    wow.Click(frame.share)
-    wow.Click(frame.destinations.SAY)
-    equal(#wow.sentMessages, 0, "Say never asks the addon to send chat")
-    equal(opened[1], "/s Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
-        "Say fills the chat box for the player to send")
+    local result = "Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere."
+    local say, party = frame.destinations.SAY, frame.destinations.PARTY
 
+    -- Say and Party are secure macro buttons armed when the popout opens.
+    IsInGroup = function() return false end
     wow.Click(frame.share)
-    wow.Click(frame.destinations.PARTY)
-    equal(wow.LastPrint():find("You are not in a party.", 1, true) ~= nil, true,
-        "party sharing falls back to text when solo")
+    equal(say.template, "SecureActionButtonTemplate,BackdropTemplate", "Say is a secure button")
+    equal(say:GetAttribute("type"), "macro", "Say runs a macro")
+    equal(say:GetAttribute("macrotext"), "/s " .. result, "Say's macro posts the result")
+    equal(say:GetAttribute("useOnKeyDown"), false, "Say fires on mouse-up like its click registration")
+    equal(party.enabled, false, "Party is disabled when solo")
+    equal(party:GetAttribute("macrotext"), nil, "and has no macro")
+    equal(rawget(say.scripts, "OnClick"), nil, "the secure template keeps OnClick")
+    say.scripts.PostClick(say)
+    equal(frame.destinationPopup:IsShown(), false, "clicking Say closes the popout")
+    equal(#wow.sentMessages, 0, "the addon itself never calls the chat API")
 
     IsInGroup = function() return true end
     wow.Click(frame.share)
-    wow.Click(frame.destinations.PARTY)
-    equal(opened[2], "/p Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
-        "Party fills the chat box too")
-    equal(#wow.sentMessages, 0, "Party never asks the addon to send chat")
+    equal(party.enabled, true, "Party is enabled in a group")
+    equal(party:GetAttribute("macrotext"), "/p " .. result, "Party's macro posts the result")
+    wow.Click(frame.share)
 
-    -- Older clients: ChatFrame_OpenChat; neither available: the copy window.
-    ChatFrameUtil, ChatFrame_OpenChat = nil, function(text) opened[#opened + 1] = text end
+    -- Share is disabled while chat is restricted, and re-enabled after.
+    InCombatLockdown = function() return true end
+    frame.scripts.OnEvent(frame, "PLAYER_REGEN_DISABLED")
+    equal(frame.share.enabled, false, "Share is disabled in combat")
     wow.Click(frame.share)
-    wow.Click(frame.destinations.SAY)
-    equal(#opened, 3, "the older chat opener is used when the new one is missing")
-    ChatFrame_OpenChat = nil
-    wow.Click(frame.share)
-    wow.Click(frame.destinations.SAY)
-    equal(HC.Copy.frame.edit:GetText(), "/s Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
-        "with no chat opener, the copy window is the fallback")
-    equal(HC.Copy.frame.help:GetText(), "Copy, open chat, paste, then press Enter.",
-        "and explains the manual send")
+    equal(frame.destinationPopup:IsShown(), false, "and cannot open")
+    InCombatLockdown = function() return false end
+    frame.scripts.OnEvent(frame, "PLAYER_REGEN_ENABLED")
+    equal(frame.share.enabled, true, "Share returns after combat")
+
+    Enum = Enum or {}
+    Enum.AddOnRestrictionType = { Combat = 0, Encounter = 1, ChallengeMode = 2, PvPMatch = 3, Map = 4 }
+    local active = {}
+    C_RestrictedActions = { IsAddOnRestrictionActive = function(kind) return active[kind] == true end }
+    active[2] = true
+    frame.scripts.OnEvent(frame, "ADDON_RESTRICTION_STATE_CHANGED")
+    equal(frame.share.enabled, false, "Share is disabled during a keystone")
+    active[2] = nil
+    active[4] = true
+    frame.scripts.OnEvent(frame, "ADDON_RESTRICTION_STATE_CHANGED")
+    equal(frame.share.enabled, true, "map restrictions alone do not block chat")
+    C_RestrictedActions = nil
 end
 
 -- ── The hidden timer setting ───────────────────────────────────────────────
