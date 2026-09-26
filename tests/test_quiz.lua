@@ -138,14 +138,13 @@ do
     equal(wow.LastPrint(), "TestAddon: Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
         "text shares the concise result through addon chat")
 
+    local opened = {}
+    ChatFrameUtil = { OpenChat = function(text) opened[#opened + 1] = text end }
     wow.Click(frame.share)
     wow.Click(frame.destinations.SAY)
     equal(#wow.sentMessages, 0, "Say never asks the addon to send chat")
-    equal(HC.Copy.frame.title:GetText(), "Share to Say", "Say opens the copy window")
-    equal(HC.Copy.frame.edit:GetText(), "/s Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
-        "Say has a native chat command ready to copy")
-    equal(HC.Copy.frame.help:GetText(), "Copy, open chat, paste, then press Enter.",
-        "the copy window explains the manual send")
+    equal(opened[1], "/s Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+        "Say fills the chat box for the player to send")
 
     wow.Click(frame.share)
     wow.Click(frame.destinations.PARTY)
@@ -155,8 +154,22 @@ do
     IsInGroup = function() return true end
     wow.Click(frame.share)
     wow.Click(frame.destinations.PARTY)
-    equal(HC.Copy.frame.edit:GetText(), "/p Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
-        "Party has a native chat command ready to copy")
+    equal(opened[2], "/p Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+        "Party fills the chat box too")
+    equal(#wow.sentMessages, 0, "Party never asks the addon to send chat")
+
+    -- Older clients: ChatFrame_OpenChat; neither available: the copy window.
+    ChatFrameUtil, ChatFrame_OpenChat = nil, function(text) opened[#opened + 1] = text end
+    wow.Click(frame.share)
+    wow.Click(frame.destinations.SAY)
+    equal(#opened, 3, "the older chat opener is used when the new one is missing")
+    ChatFrame_OpenChat = nil
+    wow.Click(frame.share)
+    wow.Click(frame.destinations.SAY)
+    equal(HC.Copy.frame.edit:GetText(), "/s Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+        "with no chat opener, the copy window is the fallback")
+    equal(HC.Copy.frame.help:GetText(), "Copy, open chat, paste, then press Enter.",
+        "and explains the manual send")
 end
 
 -- ── The hidden timer setting ───────────────────────────────────────────────

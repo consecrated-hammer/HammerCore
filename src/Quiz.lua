@@ -102,6 +102,23 @@ function Quiz:ResultText()
     return "Lore quiz: " .. self.score .. "/" .. #self.run .. ". " .. self.verdict
 end
 
+-- Addon code may not send Say outdoors, even from a click: on WoW Forever
+-- both chat-send APIs raise ADDON_ACTION_BLOCKED, while the same call typed
+-- as /run is allowed.  So the addon fills the player's chat box and the
+-- player sends it with Enter.  The copy window remains a last resort.
+local function openChat(text)
+    local util = ChatFrameUtil and ChatFrameUtil.OpenChat
+    if type(util) == "function" then
+        util(text)
+        return true
+    end
+    if type(ChatFrame_OpenChat) == "function" then
+        ChatFrame_OpenChat(text)
+        return true
+    end
+    return false
+end
+
 function Quiz:Publish(destination)
     local text = self:ResultText()
     if destination == "TEXT" then
@@ -110,8 +127,10 @@ function Quiz:Publish(destination)
         HC.Print("You are not in a party. " .. text)
     else
         local command = destination == "PARTY" and "/p " or "/s "
-        HC.Copy:Show("Share to " .. DESTINATION_LABELS[destination], command .. text,
-            "Copy, open chat, paste, then press Enter.")
+        if not openChat(command .. text) then
+            HC.Copy:Show("Share to " .. DESTINATION_LABELS[destination], command .. text,
+                "Copy, open chat, paste, then press Enter.")
+        end
     end
 end
 
