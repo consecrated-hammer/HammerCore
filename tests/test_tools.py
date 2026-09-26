@@ -72,6 +72,10 @@ def main() -> int:
         staged.rename(output / ".Anvilwise.previous")
         third = run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--client", "retail", "--output", str(output))
         assert "0.1.0-dev3" in third, "an interrupted swap does not reset the dev number"
+        # A Forever-only addon stages only to Forever by default.
+        (addon / "Anvilwise.toc").unlink()
+        only = run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--output", str(temp / "Only"))
+        assert "for forever" in only and "for retail" not in only, "only clients with a TOC are staged"
     print("hammercore tool tests passed")
     return 0
 

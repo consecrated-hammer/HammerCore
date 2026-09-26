@@ -3,6 +3,8 @@
 
 Usage: stage.py <addon-dir> [--client retail|forever|both] [--output DIR]
 
+By default it stages every client the addon ships a TOC for.
+
 Each client receives the whole runtime folder with every TOC, and the TOC
 that client loads is stamped with an incrementing -devN version, so an
 in-game `/<cmd> version` identifies exactly which build is loaded.
@@ -103,12 +105,20 @@ def stage(source: Path, name: str, output: Path, toc_name: str, version: str) ->
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("addon", type=Path)
-    parser.add_argument("--client", choices=["retail", "forever", "both"], default="both")
+    parser.add_argument("--client", choices=["retail", "forever", "both"],
+                        help="default: every client the addon has a TOC for")
     parser.add_argument("--output", type=Path, help="stage into DIR instead of the client folder")
     args = parser.parse_args()
     source = args.addon.resolve()
     name = source.name
-    clients = ["retail", "forever"] if args.client == "both" else [args.client]
+    if args.client in (None, "both"):
+        clients = [c for c in ("retail", "forever") if (source / CLIENTS[c][1].format(name=name)).is_file()]
+        if args.client == "both" and len(clients) < 2:
+            raise SystemExit(f"{name} does not ship TOCs for both clients")
+        if not clients:
+            raise SystemExit(f"{name} has no client TOC")
+    else:
+        clients = [args.client]
     roots = [args.output] if args.output else [CLIENTS[c][0] for c in ("retail", "forever")]
     version = dev_version(source / CLIENTS[clients[0]][1].format(name=name), name, roots)
     for client in clients:
