@@ -98,3 +98,41 @@ jobs:
         env:
           GITHUB_OAUTH: ${{ secrets.GITHUB_TOKEN }}
           CF_API_KEY: ${{ secrets.CF_API_KEY }}
+
+      # Posts this version's notes to #announcements on the Consecrated Hammer
+      # Discord. Needs the RELEASES_WEBHOOK_URL repository secret; the optional
+      # DISCORD_ROLE_ID repository variable pings that addon's role. Skipped
+      # for pre-releases, and a failed post never fails the release.
+      - name: Announce on Discord
+        if: ${{ !contains(github.ref_name, '-') }}
+        continue-on-error: true
+        env:
+          WEBHOOK: ${{ secrets.RELEASES_WEBHOOK_URL }}
+          ROLE_ID: ${{ vars.DISCORD_ROLE_ID }}
+          ADDON: ${{ github.event.repository.name }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then echo "RELEASES_WEBHOOK_URL is not set; skipping"; exit 0; fi
+          python3 - <<'EOF'
+          import glob, json, os, re, urllib.request
+          addon, tag = os.environ["ADDON"], os.environ["GITHUB_REF_NAME"].lstrip("v")
+          link = f"https://www.curseforge.com/wow/addons/{addon.lower()}"
+          for toc in sorted(glob.glob("*.toc")):
+              found = re.search(r"^## X-CurseForge:\s*(\S+)", open(toc, encoding="utf-8").read(), re.M)
+              if found:
+                  link = found.group(1)
+                  break
+          notes = open("RELEASE_NOTES.md", encoding="utf-8").read().strip()
+          if len(notes) > 4000:
+              notes = notes[:3990].rsplit("\n", 1)[0] + "\n…"
+          role = os.environ.get("ROLE_ID", "").strip()
+          body = {
+              "content": f"<@&{role}>" if role else "",
+              "allowed_mentions": {"roles": [role] if role else []},
+              "embeds": [{"title": f"{addon} {tag} released", "url": link,
+                          "description": notes, "color": 0xD4AF37}],
+          }
+          request = urllib.request.Request(os.environ["WEBHOOK"], data=json.dumps(body).encode(), method="POST",
+                                           headers={"Content-Type": "application/json", "User-Agent": "consecrated-hammer-release"})
+          urllib.request.urlopen(request, timeout=30)
+          print(f"announced {addon} {tag}")
+          EOF

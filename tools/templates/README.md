@@ -14,6 +14,11 @@ Type `/{{COMMAND}}` for settings and `/{{COMMAND}} help` for every command.
 - Stage both clients with `python3 ../HammerCore/tools/stage.py .`.
 - Releases are tagged from `main` only.
 
+## Support
+
+Bug reports, ideas and questions: the [Consecrated Hammer Discord](https://discord.gg/z3xKxRygDc)
+(`#bug-reports`, `#suggestions`, `#help`).
+
 ## Licence
 
 GPL v3. See [LICENSE.txt](LICENSE.txt).
