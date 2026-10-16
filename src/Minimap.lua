@@ -3,7 +3,7 @@ local HC = ns.HammerCore
 
 -- A hand-rolled minimap button: no LibDBIcon or LibDataBroker, so its
 -- position never depends on which other addons are loaded.  Left-click
--- opens settings; right-click runs the addon's optional action.
+-- opens settings by default; either click can run an addon action.
 
 local MinimapButton = {}
 HC.Minimap = MinimapButton
@@ -67,13 +67,13 @@ function MinimapButton:Create()
         if button == "RightButton" then
             if spec.rightClick then spec.rightClick() end
         else
-            HC.Settings:Toggle()
+            if spec.leftClick then spec.leftClick() else HC.Settings:Toggle() end
         end
     end)
     b:SetScript("OnEnter", function(self)
         GameTooltip:SetOwner(self, "ANCHOR_LEFT")
         GameTooltip:SetText(HC.name)
-        GameTooltip:AddLine("Click: settings", 0.85, 0.85, 0.85)
+        GameTooltip:AddLine("Click: " .. (spec.leftClick and tostring(spec.leftClickLabel) or "settings"), 0.85, 0.85, 0.85)
         if spec.rightClick then
             GameTooltip:AddLine("Right-click: " .. tostring(spec.rightClickLabel), 0.85, 0.85, 0.85)
         end

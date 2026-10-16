@@ -480,3 +480,17 @@ do
 end
 
 io.write("hammercore core tests passed\n")
+
+-- Addons can make their primary task the left click without changing defaults.
+do
+    local left, right = 0, 0
+    local HC = addon({ minimap = {
+        leftClick = function() left = left + 1 end, leftClickLabel = "export",
+        rightClick = function() right = right + 1 end, rightClickLabel = "settings",
+    } })
+    HC:Start()
+    wow.Click(HC.Minimap.button, "LeftButton")
+    wow.Click(HC.Minimap.button, "RightButton")
+    equal(left, 1, "custom left click runs once")
+    equal(right, 1, "custom right click runs once")
+end

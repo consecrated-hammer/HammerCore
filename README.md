@@ -53,6 +53,7 @@ HC:Init({
     status = function() return "status text" end,
     about = { note = "NOTE", tips = { "..." }, credit = "..." },
     minimap = { rightClick = fn, rightClickLabel = "lock" },
+    -- Optional leftClick / leftClickLabel override the default settings click.
     toggle = { help = "Show or hide the frame", run = fn },
     resetPosition = fn,
     railButton = { label = fn, run = fn, active = fn },  -- optional rail action
