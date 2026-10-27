@@ -42,6 +42,42 @@ local VERDICTS = {
     [5] = "Keeper of the Archives. Khadgar would approve.",
 }
 
+local VERDICT_CHOICES = {
+    [0] = { VERDICTS[0], "The quest giver would like a word.",
+        "You have discovered an entirely new version of history.", "Even the murloc looks concerned.",
+        "The loading screen tips were trying to help.", "Your lore book appears to be upside down." },
+    [1] = { VERDICTS[1], "You recognised some of the names. That counts for something.",
+        "The innkeeper recommends fewer skips and more stories.", "Your journal has room for a few more notes.",
+        "One foot in the library. The other is still at the auction house.", "A promising start for someone who clicked Accept immediately." },
+    [2] = { VERDICTS[2], "You know enough to be dangerous at a tavern quiz.",
+        "Somewhere, a quest giver feels partially heard.", "A few missing pages, but the binding is sound.",
+        "The bronze dragons have requested a small correction.", "You remembered the boss. The backstory is a work in progress." },
+    [3] = { VERDICTS[3], "You read the quest text. Most of it.",
+        "The campfire historians have saved you a seat.", "A respectable showing. The archivist has stopped sighing.",
+        "You could lead the tour, with occasional help from a map.", "Your lore book has actual bookmarks." },
+    [4] = { VERDICTS[4], "The archivist would trust you with the good quill.",
+        "One footnote away from showing off.", "You have clearly been listening between pulls.",
+        "The tavern is checking whether you brought your own questions.", "Brann would like to compare notebooks." },
+    [5] = { VERDICTS[5], "You may now correct the tour guide.",
+        "The quest text has considered reading you.", "The bronze dragons are checking their notes.",
+        "Please leave some trivia for the rest of the tavern.", "A perfect score. Your next quest is to touch grass in Elwynn." },
+}
+
+-- Choose once at completion so the window, local text and secure share agree.
+-- Avoid the last result for this score during the current login session.
+function Quiz:ChooseVerdict(score, total, random)
+    local bucket = math.max(0, math.min(5, math.floor(score / math.max(1, total) * 5 + 0.5)))
+    local choices = VERDICT_CHOICES[bucket]
+    self.lastVerdicts = self.lastVerdicts or {}
+    local previous = self.lastVerdicts[bucket]
+    local index = (random or math.random)(#choices - (previous and 1 or 0))
+    if previous and index >= previous then index = index + 1 end
+    self.lastVerdicts[bucket] = index
+    return choices[index]
+end
+
+function Quiz.VerdictChoices() return VERDICT_CHOICES end
+
 -- Forever is the Classic world; everything else is Retail.  An addon can
 -- override this with spec.era.
 function Quiz.Era()
@@ -69,8 +105,9 @@ end
 function Quiz.Draw(random)
     random = random or math.random
     local era = Quiz.Era()
-    local _, class = UnitClass and UnitClass("player")
-    local _, race = UnitRace and UnitRace("player")
+    local class, race
+    if UnitClass then local _; _, class = UnitClass("player") end
+    if UnitRace then local _; _, race = UnitRace("player") end
     local pool = {}
     for _, entry in ipairs(HC.QUIZ or {}) do
         if Quiz.Eligible(entry, era, class, race) then pool[#pool + 1] = entry end
@@ -355,7 +392,7 @@ function Quiz:Finish()
     local best = math.max(tonumber(state.quizBest) or 0, self.score)
     state.quizBest = best
     local total = #self.run
-    local verdict = VERDICTS[math.floor(self.score / math.max(1, total) * 5 + 0.5)] or VERDICTS[0]
+    local verdict = self:ChooseVerdict(self.score, total)
     frame.progress:SetText("Best " .. best .. " of " .. total)
     frame.question:SetText(self.score .. " of " .. total .. ". " .. verdict)
     for _, button in ipairs(frame.answers) do button:Hide() end

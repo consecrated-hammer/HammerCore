@@ -7,6 +7,23 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `tools/discord_dev.py`, and `stage.py --discord`, post a staged dev build
+  to the Discord dev-builds channel, packaging only the clients just staged.
+- Curated quiz additions with stable IDs, source URLs, client applicability,
+  multiple category tags and easier/hard difficulty. The bank is split into
+  generated category files with JSONL source and freshness checks.
+- Six solo quiz result lines per score, retaining the original lines and
+  avoiding consecutive repeats for the same score during a login session.
+
+### Fixed
+
+- Solo question selection now retains the class and race tokens returned by
+  the client, allowing matching class and race questions into the draw.
+- The minimap button's first normal click after a drag is no longer swallowed
+  on clients that do not emit a click when a drag ends.
+
 ### Changed
 
 - Quiz sharing: Say and Party are secure macro buttons, so one click posts

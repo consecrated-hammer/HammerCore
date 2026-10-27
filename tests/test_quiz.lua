@@ -11,7 +11,9 @@ local CLASSES = { WARRIOR = true, PALADIN = true, HUNTER = true, ROGUE = true, P
     MAGE = true, WARLOCK = true, DRUID = true, DEATHKNIGHT = true, MONK = true, DEMONHUNTER = true, EVOKER = true }
 local RACES = { Human = true, Dwarf = true, NightElf = true, Gnome = true, Draenei = true, Worgen = true,
     Orc = true, Scourge = true, Tauren = true, Troll = true, BloodElf = true, Goblin = true, Pandaren = true,
-    Dracthyr = true, EarthenDwarf = true }
+    Dracthyr = true, EarthenDwarf = true, VoidElf = true, LightforgedDraenei = true,
+    DarkIronDwarf = true, KulTiran = true, Mechagnome = true, Nightborne = true,
+    HighmountainTauren = true, MagharOrc = true, ZandalariTroll = true, Vulpera = true }
 
 local function addon(label, class, race)
     wow.Install({ TestAddon = { Version = "1.0.0" } })
@@ -27,8 +29,10 @@ end
 -- ── The library itself ─────────────────────────────────────────────────────
 do
     local HC = addon("Retail", "PRIEST", "Human")
-    local seen = {}
-    equal(#HC.QUIZ >= 100, true, "the library holds at least 100 questions")
+    local seen, ids = {}, {}
+    local categories = { lore = true, geography = true, class = true, race = true,
+        hallowsend = true, bossquotes = true, lastwords = true, murlocs = true, goblins = true, items = true }
+    equal(#HC.QUIZ >= 1000, true, "the expanded library loads category files")
     for index, entry in ipairs(HC.QUIZ) do
         local where = "question " .. index .. " (" .. tostring(entry[1]) .. ")"
         equal(type(entry[1]), "string", where .. " has text")
@@ -46,6 +50,12 @@ do
         local key = entry[1] .. "|" .. era .. "|" .. tostring(entry.class) .. "|" .. tostring(entry.race)
         equal(seen[key], nil, where .. " is not a duplicate")
         seen[key] = true
+        equal(type(entry.id) == "string" and entry.id ~= "", true, where .. " has a stable id")
+        equal(ids[entry.id], nil, where .. " id is unique")
+        ids[entry.id] = true
+        equal(entry.difficulty == "easy" or entry.difficulty == "hard", true, where .. " has difficulty")
+        equal(type(entry.categories) == "table" and #entry.categories > 0, true, where .. " has categories")
+        for _, category in ipairs(entry.categories) do equal(categories[category], true, where .. " category exists") end
     end
 end
 
@@ -107,6 +117,20 @@ end
 
 -- ── A run from start to finish ─────────────────────────────────────────────
 do
+    local HC = addon("Retail", "MAGE", "Gnome")
+    HC.QUIZ = {
+        { "Mage question", "a", "b", "c", "d", class = "MAGE" },
+        { "Gnome question", "a", "b", "c", "d", race = "Gnome" },
+        { "Other class", "a", "b", "c", "d", class = "PRIEST" },
+        { "Other race", "a", "b", "c", "d", race = "Human" },
+    }
+    local run = HC.Quiz.Draw(function(n) return n end)
+    equal(#run, 2, "Draw retains matching class and race questions")
+    equal(run[1].question, "Gnome question", "Draw reads the second UnitRace return")
+    equal(run[2].question, "Mage question", "Draw reads the second UnitClass return")
+end
+
+do
     local HC, saved = addon("Retail", "MAGE", "Gnome")
     HC.Quiz:Start()
     local quiz, frame = HC.Quiz, HC.Quiz.frame
@@ -135,10 +159,10 @@ do
     equal(frame.destinationPopup:IsShown(), true, "share opens the destination popup")
     equal(#wow.printed, 0, "opening the popup does not share")
     wow.Click(frame.destinations.TEXT)
-    equal(wow.LastPrint(), "TestAddon: Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere.",
+    equal(wow.LastPrint(), "TestAddon: Lore quiz: 1/5. " .. quiz.verdict,
         "text shares the concise result through addon chat")
 
-    local result = "Lore quiz: 1/5. A fresh recruit. Everyone starts somewhere."
+    local result = "Lore quiz: 1/5. " .. quiz.verdict
     local say, party = frame.destinations.SAY, frame.destinations.PARTY
 
     -- Say and Party are secure macro buttons armed when the popout opens.
@@ -183,6 +207,28 @@ do
     frame.scripts.OnEvent(frame, "ADDON_RESTRICTION_STATE_CHANGED")
     equal(frame.share.enabled, true, "map restrictions alone do not block chat")
     C_RestrictedActions = nil
+end
+
+-- Varied score-specific results stay stable while sharing and avoid an immediate repeat.
+do
+    local HC = addon("Retail", "PRIEST", "Human")
+    local quiz = HC.Quiz
+    for score = 0, 5 do
+        local allowed, seen = {}, {}
+        for _, line in ipairs(quiz.VerdictChoices()[score]) do
+            equal(type(line), "string", "result is text")
+            equal(allowed[line], nil, "result choices are distinct")
+            allowed[line] = true
+        end
+        local previous
+        for _ = 1, 20 do
+            local line = quiz:ChooseVerdict(score, 5, function(n) return n end)
+            equal(allowed[line], true, "result matches the score")
+            equal(line ~= previous, true, "consecutive same-score results differ")
+            seen[line], previous = true, line
+        end
+    end
+    equal(quiz.VerdictChoices()[0][1], "Have you considered reading the quest text?", "original quip retained")
 end
 
 -- ── The hidden timer setting ───────────────────────────────────────────────

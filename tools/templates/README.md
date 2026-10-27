@@ -42,7 +42,9 @@ GPL v3, see [LICENSE.txt](https://github.com/consecrated-hammer/{{NAME}}/blob/ma
 
 ## Development
 
-Everything above this heading is also the CurseForge description; paste it into the author console when it changes.
+Keep the CurseForge project description as a separate concise overview in the
+wow-addons workstream. Review it after each release and change it only for
+material player-facing changes; the detailed README is not the pasteable copy.
 
 - Settings, commands, the minimap button, the startup message and the
   Commands, Troubleshooting and About pages come from HammerCore,

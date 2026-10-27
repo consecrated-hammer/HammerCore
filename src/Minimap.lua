@@ -57,6 +57,9 @@ function MinimapButton:Create()
 
     b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
     b:RegisterForDrag("LeftButton")
+    -- A drag release may have no OnClick. Clear its suppression on the next
+    -- actual press so that the next ordinary click is never swallowed.
+    b:SetScript("OnMouseDown", function(self) self.hcDragged = nil end)
     b:SetScript("OnDragStart", function(self) self:SetScript("OnUpdate", follow) end)
     b:SetScript("OnDragStop", function(self)
         self:SetScript("OnUpdate", nil)

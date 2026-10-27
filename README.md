@@ -99,13 +99,33 @@ does not wrap.
 
 ### Lore quiz
 
-`src/QuizData.lua` is the shared question library. Each entry is
+`src/QuizData.lua` initialises and decodes the shared question library. Each decoded entry is
 `{ "Question", "Correct", "Wrong", "Wrong", "Wrong", era = ?, class = ?, race = ? }`,
 with the correct answer always second. `era` is `"both"` (the default),
 `"classic"` (WoW Forever) or `"retail"`. `class` and `race` take client
 tokens such as `PALADIN` or `Draenei`. The client's era comes from
 `spec.clientLabel` (anything containing "Forever" is Classic), or from
 `spec.era`. `tests/test_quiz.lua` validates every entry.
+
+The pool is split into generated `src/Quiz_<category>.lua` files, loaded
+after `QuizData.lua` initialises the shared table. Curated source rows live in
+`data/quiz/*.jsonl`; run `python3 tools/generate_quiz.py` after editing them,
+or `--check` to verify the generated files are current. Each added row keeps
+a stable ID, source URL, explicit client tag, difficulty and one or more
+category tags. An entry appears once even when several categories match.
+`classic` specifically means WoW Forever, not every Classic-derived client.
+
+Generated category files use lightweight seeded byte obfuscation to discourage
+casual peeking at questions and answers. They decode when the library loads,
+without a bit library or external dependency. This is not secure encryption;
+the decoder and data are both present on the client. Readable JSONL is maintainer
+source and is excluded from client staging. `tests/test_quiz_roundtrip.py`
+compares every decoded field with that source under Lua 5.1.
+
+Loreforge uses these tags for hosted games without filtering by the host's
+class or race. The solo quiz still uses the character filters. It now has six
+result lines per score, chosen once when a run ends; repeating a score avoids
+the previous line for that score during the current login session.
 
 ### Themes
 
@@ -131,7 +151,8 @@ Classic. Everything else follows from the colour roles.
 | `tools/sync.py <addon>` | Vendor `src/` into `<addon>/Libs/HammerCore`, pinned to HEAD (commit first) |
 | `tools/check.py <addon>` | Fail if the vendored copy differs from its pinned commit |
 | `tools/toc_check.py <addon>` | Fail if a TOC does not load exactly the addon's Lua files, following XML |
-| `tools/stage.py <addon>` | Stage `-devN` builds into the Retail and Forever client folders |
+| `tools/stage.py <addon>` | Stage `-devN` builds into the Retail and Forever client folders. Add `--discord [--note TEXT]` to post the zip too |
+| `tools/discord_dev.py <addon>` | Zip the staged dev build and post it to the Discord dev-builds channel (`DEV_BUILDS_WEBHOOK_URL` in the host automation env). `--dry-run DIR` builds without posting |
 | `tools/new_addon.py <Name>` | Scaffold a new addon |
 
 Never edit an addon's `Libs/HammerCore` directly. Change HammerCore, test,

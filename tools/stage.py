@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Stage a runtime-only copy of an addon into the Syncthing client folders.
 
-Usage: stage.py <addon-dir> [--client retail|forever|both] [--output DIR]
+Usage: stage.py <addon-dir> [--client retail|forever|both] [--output DIR] [--discord [--note TEXT]]
 
 By default it stages every client the addon ships a TOC for.
 
@@ -108,6 +108,8 @@ def main() -> int:
     parser.add_argument("--client", choices=["retail", "forever", "both"],
                         help="default: every client the addon has a TOC for")
     parser.add_argument("--output", type=Path, help="stage into DIR instead of the client folder")
+    parser.add_argument("--discord", action="store_true", help="then post the build zip to the Discord dev-builds channel")
+    parser.add_argument("--note", default="", help="with --discord, one line about what changed")
     args = parser.parse_args()
     source = args.addon.resolve()
     name = source.name
@@ -129,6 +131,11 @@ def main() -> int:
             raise SystemExit(f"{folder} is missing; is the Syncthing share mounted?")
         stage(source, name, args.output or folder, toc.format(name=name), version)
         print(f"Staged {name} {version} for {client} at {(args.output or folder) / name}")
+    if args.discord:
+        if args.output:
+            raise SystemExit("--discord posts the client-folder build; drop --output")
+        from discord_dev import publish
+        publish(source, args.note, clients=clients)
     return 0
 
 

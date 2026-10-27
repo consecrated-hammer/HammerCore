@@ -72,6 +72,27 @@ def main() -> int:
         staged.rename(output / ".Anvilwise.previous")
         third = run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--client", "retail", "--output", str(output))
         assert "0.1.0-dev3" in third, "an interrupted swap does not reset the dev number"
+        # Staging one client leaves the other on an older -devN; a Discord post
+        # for that client must not be blocked by the stale copy.
+        sys.path.insert(0, str(TOOLS))
+        import discord_dev
+        retail_root, forever_root = temp / "RetailAddOns", temp / "ForeverAddOns"
+        run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--client", "forever", "--output", str(forever_root))
+        run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--client", "retail", "--output", str(retail_root))
+        run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--client", "retail", "--output", str(retail_root))
+        saved = dict(discord_dev.CLIENTS)
+        try:
+            discord_dev.CLIENTS["retail"] = (retail_root, saved["retail"][1])
+            discord_dev.CLIENTS["forever"] = (forever_root, saved["forever"][1])
+            version, _, tocs = discord_dev.staged_build("Anvilwise", ["retail"])
+            assert version == "0.1.0-dev2" and list(tocs) == ["retail"], "only the selected client is packaged"
+            try:
+                discord_dev.staged_build("Anvilwise")
+                raise AssertionError("mismatched clients are still refused without a selection")
+            except SystemExit:
+                pass
+        finally:
+            discord_dev.CLIENTS.update(saved)
         # A Forever-only addon stages only to Forever by default.
         (addon / "Anvilwise.toc").unlink()
         only = run(sys.executable, str(TOOLS / "stage.py"), str(addon), "--output", str(temp / "Only"))

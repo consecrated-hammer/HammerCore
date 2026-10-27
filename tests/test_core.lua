@@ -389,6 +389,14 @@ do
     equal(HC.Settings:IsShown(), true, "left-click opens settings")
     wow.Click(button, "LeftButton")
     equal(HC.Settings:IsShown(), false, "left-click again closes settings")
+    button.scripts.OnDragStop(button)
+    -- Clients may skip OnClick on drag release. The next press is a new click.
+    button.scripts.OnMouseDown(button)
+    wow.Click(button, "LeftButton")
+    equal(HC.Settings:IsShown(), true, "first real click after a drag still opens settings")
+    button.scripts.OnDragStop(button)
+    wow.Click(button, "LeftButton")
+    equal(HC.Settings:IsShown(), true, "a click emitted by drag release is suppressed")
 end
 
 -- ── Rail button and combat hiding ─────────────────────────────────────────
