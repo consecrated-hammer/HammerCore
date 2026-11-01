@@ -7,8 +7,9 @@ minimap button and reference pages, so they feel like one family.
 
 HammerCore is **not** an addon and is **not** installed by players. Each
 addon vendors a pinned copy under `Libs/HammerCore/` and loads it into its
-own private namespace, with no global and no LibStub. Five addons can each
-run a different HammerCore version without affecting one another.
+own private namespace, with no LibStub and only one small global, for the
+shared What's new window. Five addons can each run a different HammerCore
+version without affecting one another.
 
 ## Starting a new addon
 
@@ -58,6 +59,11 @@ HC:Init({
     resetPosition = fn,
     railButton = { label = fn, run = fn, active = fn },  -- optional rail action
     hideInCombat = true,                                  -- optional
+    whatsNew = {                                          -- optional
+        { version = "1.4.0", items = {
+            { text = "Anvils now shine.", page = "General" },  -- page adds a button
+        } },
+    },
 })
 
 HC.Commands:Add({ name = "scan", section = "Bags", help = "Rescan bags", run = fn })
@@ -76,10 +82,29 @@ HC:Start()
 |---|---|
 | Chat | `Name:` prefix in `|cffd4af37`; `HC.Print(message)` |
 | Login | `Name v1.2.3 loaded - type /cmd for settings, /cmd help for commands` |
-| Core commands | `/cmd`, `help`, `version`, `about`, `debug`, `startup [on\|off]`, `minimap [on\|off]`, `reset position`, `reset settings`, `quiz` (hidden: `theme`, `quiz timer`) |
+| Core commands | `/cmd`, `help`, `version`, `about`, `debug`, `startup [on\|off]`, `minimap [on\|off]`, `reset position`, `reset settings`, `quiz`, plus `whatsnew` with `spec.whatsNew` (hidden: `theme`, `quiz timer`) |
 | Shared verbs | `toggle`, `lock`, `unlock`, present only when the addon supplies them |
 | Settings rail | Addon pages under CORE, a divider, then REFERENCE: addon reference pages, Commands, Troubleshooting, About (Theme is withheld for now) |
 | Visibility | "Show startup message" and "Show minimap button", plus `spec.visibility(panel, y)`. The page goes last in CORE unless placed with `HC.Settings:AddVisibility()` |
+
+With `spec.whatsNew`, the first login after an update opens a short list of
+the highlights for every release newer than the one the player last saw. A
+fresh install records the version silently, releases without highlights never
+open it, combat delays it, and `-devN` counts as its base version. An existing
+profile with no record (an update from before What's new) sees only the
+current release. A highlight added to a release the player has already seen
+shows on its own, so dev builds pick up each new highlight. Highlights that
+open the same page share one button.
+Players get `whatsnew`, a Visibility toggle and an About button, which show
+only that addon.
+
+After an update, every Consecrated Hammer addon with news shares one window,
+"What's new in Consecrated Hammer addons", with a section per addon. It's the
+one place HammerCore copies share anything: each copy leaves its unseen
+highlights in the `ConsecratedHammerWhatsNew` global at login, the first timer
+to fire draws them all with the newest renderer loaded, and each addon still
+records what it has seen in its own saved variables. Keep the highlight shape
+stable, since an older copy may draw a newer addon's entries.
 
 HammerCore keeps its state in `db.hammerCore`, and on first run adopts the
 keys named in `spec.legacy`. `reset settings` clears `spec.savedVariable`

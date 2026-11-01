@@ -502,3 +502,167 @@ do
     equal(left, 1, "custom left click runs once")
     equal(right, 1, "custom right click runs once")
 end
+
+-- ── What's new ─────────────────────────────────────────────────────────────
+do
+    local notes = {
+        { version = "1.2.3", items = {
+            { text = "Cooldown icons.", page = "General" },
+            "A plain note.",
+            { text = "A cooldown bar.", page = "General" },
+        } },
+        { version = "1.1.0", items = { "An older highlight." } },
+        { version = "1.0.5", items = {} },
+    }
+    local function start(saved, overrides)
+        overrides = overrides or {}
+        overrides.db = function() return saved end
+        overrides.whatsNew = overrides.whatsNew or notes
+        local HC = addon(overrides)
+        HC.Settings:NewPage({ name = "General", title = "General" }, function(_, y) return y end)
+        HC:Start()
+        return HC
+    end
+    local function fire(HC, event)
+        HC.WhatsNew.eventFrame.scripts.OnEvent(HC.WhatsNew.eventFrame, event)
+    end
+    local function shown(HC) return HC.WhatsNew.frame ~= nil and HC.WhatsNew.frame.shown end
+
+    local W = addon().WhatsNew
+    equal(W.Compare("1.2.3-dev4", "1.2.3"), 0, "a dev build counts as its base version")
+    equal(W.Compare("1.10.0", "1.9.9"), 1, "versions compare numerically")
+    equal(W.Compare("v1.2", "1.2.0"), 0, "a leading v and missing parts are ignored")
+    equal(W.Base("1.2.3-dev4"), "1.2.3", "base version strips the dev suffix")
+
+    -- A fresh install records the version and stays quiet.
+    local fresh = {}
+    local HC = start(fresh, { legacy = {} })
+    equal(HC.WhatsNew.eventFrame, nil, "a fresh install schedules nothing")
+    equal(fresh.hammerCore.whatsNewSeen, "1.2.3", "a fresh install records the version")
+
+    -- An existing profile from before What's new: this release only.
+    local existing = { hammerCore = { startupMessage = false } }
+    HC = start(existing)
+    fire(HC, "PLAYER_ENTERING_WORLD")
+    equal(shown(HC), true, "an update shows what's new")
+    equal(wow.FindText("Version 1.2.3") ~= nil, true, "it lists this release")
+    equal(wow.FindText("- An older highlight."), nil, "older releases aren't assumed unseen")
+    equal(existing.hammerCore.whatsNewSeen, "1.2.3", "showing records the version")
+    equal(wow.FindButton("Open General") ~= nil, true, "a highlight can open its settings page")
+    local buttons = 0
+    for _, frame in ipairs(wow.frames) do
+        local text = rawget(frame, "Text")
+        if type(text) == "table" and text.text == "Open General" and wow.Visible(frame) then buttons = buttons + 1 end
+    end
+    equal(buttons, 1, "highlights sharing a page share one button")
+    equal(wow.FindText("- A cooldown bar.") ~= nil, true, "grouped highlights are all listed")
+
+    -- Seen before: only newer releases, and the empty one never counts.
+    local seen = { hammerCore = { startupMessage = false, whatsNewSeen = "1.0.0" } }
+    HC = start(seen)
+    fire(HC, "PLAYER_ENTERING_WORLD")
+    equal(wow.FindText("- An older highlight.") ~= nil, true, "every unseen release is listed")
+    equal(wow.FindText("Version 1.0.5"), nil, "a release without highlights is left out")
+
+    -- Up to date: nothing.
+    local current = { hammerCore = { startupMessage = false, whatsNewSeen = "1.2.3", whatsNewSeenItems = 3 } }
+    HC = start(current)
+    equal(HC.WhatsNew.eventFrame, nil, "nothing new schedules nothing")
+
+    -- A highlight added to a release already seen shows on its own.
+    local added = { hammerCore = { startupMessage = false, whatsNewSeen = "1.2.3", whatsNewSeenItems = 2 } }
+    HC = start(added)
+    fire(HC, "PLAYER_ENTERING_WORLD")
+    equal(shown(HC), true, "a new highlight for a seen release shows")
+    equal(wow.Visible(wow.FindText("- A cooldown bar.")), true, "the new highlight is listed")
+    local old = wow.FindText("- Cooldown icons.")
+    equal(old ~= nil and wow.Visible(old), false, "highlights already seen aren't")
+    equal(added.hammerCore.whatsNewSeenItems, 3, "then all three are recorded as seen")
+
+    -- Combat holds it back until combat ends.
+    local combat = { hammerCore = { startupMessage = false, whatsNewSeen = "1.1.0" } }
+    HC = start(combat)
+    InCombatLockdown = function() return true end
+    fire(HC, "PLAYER_ENTERING_WORLD")
+    equal(shown(HC), false, "it never opens in combat")
+    equal(combat.hammerCore.whatsNewSeen, "1.1.0", "unshown highlights stay unseen")
+    InCombatLockdown = function() return false end
+    fire(HC, "PLAYER_REGEN_ENABLED")
+    equal(shown(HC), true, "it opens once combat ends")
+    equal(combat.hammerCore.whatsNewSeen, "1.2.3", "then records the version")
+
+    -- Switched off: quiet, and the record still moves on.
+    local off = { hammerCore = { startupMessage = false, whatsNewSeen = "1.1.0", whatsNew = false } }
+    HC = start(off)
+    equal(HC.WhatsNew.eventFrame, nil, "switched off schedules nothing")
+    equal(off.hammerCore.whatsNewSeen, "1.2.3", "switched off still records the version")
+
+    -- A dev build can carry the next release's highlights.
+    local ahead = { hammerCore = { startupMessage = false, whatsNewSeen = "1.2.3", whatsNewSeenItems = 3 } }
+    HC = start(ahead, { whatsNew = { { version = "1.3.0", items = { "Next release." } } } })
+    fire(HC, "PLAYER_ENTERING_WORLD")
+    equal(shown(HC), true, "a dev build shows the next release's highlights")
+    equal(ahead.hammerCore.whatsNewSeen, "1.3.0", "and records that release as seen")
+
+    -- The command, the toggle and the report.
+    HC.WhatsNew:Hide()
+    HC.Commands:Dispatch("whatsnew")
+    equal(shown(HC), true, "the command opens it any time")
+    contains({ HC.DiagnosticReport() }, "What's new: on, last seen 1.3.0", "the report shows the state")
+    local plain = addon()
+    equal(plain.Commands.byName.whatsnew, nil, "addons without highlights get no command")
+end
+
+-- ── One What's new window for every addon ──────────────────────────────────
+do
+    wow.Install(META)
+    local nsA = wow.LoadHammerCore("src", "TestAddon")
+    local nsB = wow.LoadHammerCore("src", "OtherAddon")
+    local dbA = { hammerCore = { startupMessage = false, whatsNewSeen = "1.0.0" } }
+    local dbB = { hammerCore = { startupMessage = false, whatsNewSeen = "9.0.0" } }
+    local A, B = nsA.HammerCore, nsB.HammerCore
+    A:Init({ name = "TestAddon", command = "testaddon", icon = "a", db = function() return dbA end,
+        whatsNew = { { version = "1.2.3", items = { { text = "First addon news.", page = "General" } } } } })
+    B:Init({ name = "OtherAddon", command = "other", icon = "b", minimap = { icon = "b-small" },
+        db = function() return dbB end,
+        whatsNew = { { version = "9.9.9", items = { { text = "Second addon news.", page = "Extras" } } } } })
+    A.Settings:NewPage({ name = "General", title = "General" }, function(_, y) return y end)
+    B.Settings:NewPage({ name = "Extras", title = "Extras" }, function(_, y) return y end)
+    A:Start()
+    B:Start()
+    B.WhatsNew.eventFrame.scripts.OnEvent(B.WhatsNew.eventFrame, "PLAYER_ENTERING_WORLD")
+    A.WhatsNew.eventFrame.scripts.OnEvent(A.WhatsNew.eventFrame, "PLAYER_ENTERING_WORLD")
+    local windows = 0
+    for _, W in ipairs({ A.WhatsNew, B.WhatsNew }) do
+        if W.frame and W.frame.shown then windows = windows + 1 end
+    end
+    equal(windows, 1, "every addon's news shares one window")
+    equal(wow.FindText("What's new in Consecrated Hammer addons") ~= nil, true, "the shared window names the family")
+    equal(wow.FindText("- First addon news.") ~= nil, true, "the first addon's news is listed")
+    equal(wow.FindText("- Second addon news.") ~= nil, true, "the second addon's news is listed")
+    equal(wow.FindText("OtherAddon") ~= nil, true, "each addon has a heading")
+    local frame = A.WhatsNew.frame.shown and A.WhatsNew.frame or B.WhatsNew.frame
+    equal(frame.icon.texture, "Interface\\GossipFrame\\AvailableQuestIcon", "the shared window has a neutral icon")
+    local headingIcons = {}
+    for _, region in ipairs(wow.regions) do
+        if region.parent == frame.content and (region.texture == "a" or region.texture == "b-small" or region.texture == "b") then
+            headingIcons[region.texture] = (headingIcons[region.texture] or 0) + 1
+        end
+    end
+    equal(headingIcons["b-small"], 1, "a heading uses the addon's minimap icon")
+    equal(headingIcons["a"], 1, "or its own icon without one")
+    equal(dbA.hammerCore.whatsNewSeen, "1.2.3", "the first addon records what it saw")
+    equal(dbB.hammerCore.whatsNewSeen, "9.9.9", "the second addon records what it saw")
+    local opened
+    B.Settings.Show = function(_, page) opened = page end
+    wow.Click(wow.FindButton("Open Extras"))
+    equal(opened, "Extras", "a button opens its own addon's page")
+
+    -- Each addon's command still shows only its own news.
+    A.WhatsNew:Hide()
+    B.WhatsNew:Hide()
+    B.Commands:Dispatch("whatsnew")
+    equal(wow.FindText("What's new in OtherAddon") ~= nil, true, "the command shows its own addon")
+end
+
+io.write("hammercore what's new tests passed\n")

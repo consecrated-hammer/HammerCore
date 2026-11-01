@@ -9,6 +9,17 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- **What's new.** An addon that supplies `spec.whatsNew` gets a small window
+  of release highlights the first time the player logs in after an update.
+  It stays quiet on a fresh install and for releases without highlights,
+  waits for combat to end, and counts `-devN` builds as their base version.
+  A highlight can open a settings page, and highlights sharing a page share
+  one button. A highlight added to a release already seen shows on its own.
+  When several addons have news after an update, it all shows
+  in one window with a section per addon. Players turn it off with **Show
+  what's new after updates** on Visibility, and reopen it with `whatsnew`
+  or the About page's **What's new** button.
+
 - `tools/discord_dev.py`, and `stage.py --discord`, post a staged dev build
   to the Discord dev-builds channel, packaging only the clients just staged.
 - Curated quiz additions with stable IDs, source URLs, client applicability,
