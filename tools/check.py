@@ -35,22 +35,27 @@ def main() -> int:
         return 1
     fields = dict(line.split("=", 1) for line in stamp.read_text(encoding="utf-8").split() if "=" in line)
     commit = fields.get("commit", "")
-    listing = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "--name-only", commit, "src/"],
+    # Recursive: src/ has subfolders such as Textures.  Paths are relative
+    # to src/ and use forward slashes, matching git's own listing.
+    listing = subprocess.run(["git", "-C", str(ROOT), "ls-tree", "-r", "-z", "--name-only", commit, "src/"],
                              capture_output=True, text=True)
     if listing.returncode != 0:
         print(f"{addon.name}: pinned commit {commit} is not in this HammerCore checkout")
         return 1
     problems = []
-    expected = {Path(name).name for name in listing.stdout.split()}
+    expected = {name[len("src/"):] for name in listing.stdout.split("\0") if name.startswith("src/")}
     for name in sorted(expected):
         vendored = library / name
         if not vendored.is_file():
             problems.append(f"missing {name}")
         elif vendored.read_bytes() != pinned_file(commit, f"src/{name}"):
             problems.append(f"modified {name}")
-    for path in library.iterdir():
-        if path.name != "VERSION" and path.name not in expected:
-            problems.append(f"unexpected {path.name}")
+    for path in sorted(library.rglob("*")):
+        if not path.is_file():
+            continue
+        name = path.relative_to(library).as_posix()
+        if name != "VERSION" and name not in expected:
+            problems.append(f"unexpected {name}")
     harness = addon / "tests" / "hammercore" / "wow.lua"
     if harness.is_file() and harness.read_bytes() != pinned_file(commit, "tests/wow.lua"):
         problems.append("modified tests/hammercore/wow.lua")

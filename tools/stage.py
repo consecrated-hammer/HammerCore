@@ -21,7 +21,7 @@ from pathlib import Path
 
 CLIENTS = {
     "retail": (Path("/mnt/backup/syncthing/kevin/wow-interface/AddOns"), "{name}.toc"),
-    "forever": (Path("/mnt/backup/syncthing/kevin/wow-forever-beta-interface/AddOns"), "{name}_Camelot.toc"),
+    "forever": (Path("/mnt/backup/syncthing/kevin/wow-forever-interface/AddOns"), "{name}_Camelot.toc"),
 }
 RUNTIME_SUFFIXES = {".lua", ".xml", ".tga", ".blp", ".ogg", ".mp3", ".wav", ".ttf"}
 EXCLUDED_PARTS = {".git", ".github", ".scratch", "tests", "tools", "docs", "data", "media", "__pycache__"}

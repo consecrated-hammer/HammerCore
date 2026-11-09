@@ -5,9 +5,88 @@ All notable changes to HammerCore are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.3.0] - 2026-11-09
 
 ### Added
+
+- **Profile tag.** Every main settings page shows the active profile beside
+  its title, and whether the page saves to it ("Saved to profile: Party") or
+  is shared ("Shared by all profiles (active: Party)"). Pages name their
+  groups with `spec.profileGroups`; `spec.profilePartial` notes that the rest
+  of the page is shared. Clicking it opens Profiles. `Profiles:PageStatus`.
+- **Multi-select profile rules.** A rule's Group and Where are sets, picked
+  with the new `UI.CompactMultiSelect`; none or all ticked means any. Older
+  single-value rules still match and describe.
+- `UI.Header(panel, text, y, icon)` takes an optional icon (texture, file ID
+  or a function re-read on refresh).
+- Link dialogs show the whole URL, led by the addon's logo with a badge for
+  the destination (`HC.Dialog:Link{ icon = "CurseForge.tga" }`).
+
+### Changed
+
+- A two-column row's centre rule only shows once a right-hand cell joins it.
+- `tools/check.py` checks subfolders of the vendored copy (such as
+  `Textures`), not just its top level.
+
+- **New settings shell.** The rail keeps its place, with a brand block, a
+  header band with the page title and description, optional tabs across the
+  top (`spec.tabs = {{ name, build, columns }}`), and a footer with Reload UI,
+  support links and Close. A Window scale slider (0.7 to 1.3) sits in the
+  header and is saved per account.
+- **Two-column grid.** Settings pages lay rows out two to a line in
+  alternating stripes by default (reference pages stay single); `spec.columns`
+  or `UI.Columns(panel, count, y)` changes it, and `UI.Flush` closes a half
+  row. `spec.pinned` adds an area above every tab, and `UI.ActionButton`
+  lines a page action up with the page reset.
+  Checkboxes become `UI.Switch` toggles (Classic keeps its checkboxes), and
+  sliders, dropdowns and inputs sit on the right of their row.
+- **`UI.Link`**, an underlined text link. `UI.PageLink` and What's new use it
+  in place of buttons.
+- **`HC.Bindings`.** A shared Key Bindings page: pick an item from a pool on
+  the right, press a key, mouse button or wheel, and it joins the bound list
+  on the left with its key and a remove button. `HC.Bindings.Capture` is the
+  themed "press a key" prompt on its own. A `bind` that refuses a key can
+  return a replace function too, and the prompt shows **Replace**.
+- **Support links.** Discord and Buy me a coffee in the footer, which copy
+  their link through `HC.Dialog:Link`. `spec.links` overrides them, `false`
+  hides them, and **Show support links** on Visibility turns them off.
+- Textures for the new look (Circle, Fade, Chevron, Discord, Coffee) in
+  `Textures/`.
+- `spec.headerAction = { text, onClick, hint }` puts a page's own button
+  in the header (Salve's Show live preview), `HC.spec.onSettingsShown` runs
+  when settings open, and `UI.CloseButton` is the header's X for an
+  addon's own windows.
+- A CurseForge link leads the support links for any addon whose TOC has
+  `## X-CurseForge: <url>`.
+- The profile selector drops its own "Profile" title (pages put it under a
+  Profile heading), so the dropdown comes first.
+- `tools/stage.py` stages Forever builds to the live client's folder
+  (`wow-forever-interface`) now that WoW Forever is out of beta.
+
+- **Profiles.** `HC.Profiles` gives an addon named profiles for groups of
+  its settings, with a standard Profiles page, a Profile selector for other
+  pages, a quick-switch menu and a `profile [name]` command. Players choose
+  which settings belong to profiles, start new ones from the active profile
+  or the defaults, and can keep a profile per character. Switches wait for
+  combat to end.
+- **Auto-switch.** Optional profile switching when the group or instance
+  changes, by first-match rules (group type, size range, instance type and
+  instance or group size). It can switch straight away or ask first, and the
+  triggers, prompt and manual-pick behaviour are all settings. Off by
+  default.
+- **What's new page.** Addons with highlights get a What's new page at the
+  top of REFERENCE listing every release with its date, each release in its own card, plus a quest-style "!" on
+  its rail button until the player opens it after an update (**Mark unread
+  What's new** on Visibility turns it off). About's What's new button opens
+  the page. Opening it swaps the "!" for the turn-in "?" with the quest
+  turn-in sound (**Turn-in sound** on Visibility). `whatsnew reset` steps the
+  record back a release for testing, and `whatsnew sound` plays the turn-in
+  and reports which sound the client accepted. Releases can carry `date` and `history = true`; history entries
+  sit under Earlier releases and never pop up after an update.
+- `tools/whatsnew_check.py` fails a release whose version, or any earlier
+  release since the addon adopted What's new, has no What's new entry.
+- `HC.Dialog` (themed confirm and text prompts), `HC.Menu` (a small click
+  menu) and two compact controls, `UI.CompactSelect` and `UI.Stepper`.
 
 - **What's new.** An addon that supplies `spec.whatsNew` gets a small window
   of release highlights the first time the player logs in after an update.

@@ -51,6 +51,11 @@ def main() -> int:
         core.write_text(core.read_text() + "\n-- hand edit\n")
         out = run(sys.executable, str(TOOLS / "check.py"), str(addon), expect=1)
         assert "modified Core.lua" in out, "a hand edit to the vendored copy is caught"
+        extra = addon / "Libs/HammerCore/Textures/Extra.tga"
+        extra.parent.mkdir(exist_ok=True)
+        extra.write_bytes(b"not pinned")
+        out = run(sys.executable, str(TOOLS / "check.py"), str(addon), expect=1)
+        assert "unexpected Textures/Extra.tga" in out, "a stray file in a vendored subfolder is caught"
         stray = addon / "Stray.lua"
         stray.write_text("local x = 1\n")
         out = run(sys.executable, str(TOOLS / "toc_check.py"), str(addon), expect=1)

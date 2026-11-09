@@ -545,8 +545,8 @@ do
     HC = start(existing)
     fire(HC, "PLAYER_ENTERING_WORLD")
     equal(shown(HC), true, "an update shows what's new")
-    equal(wow.FindText("Version 1.2.3") ~= nil, true, "it lists this release")
-    equal(wow.FindText("- An older highlight."), nil, "older releases aren't assumed unseen")
+    equal(wow.FindText("TestAddon 1.2.3") ~= nil, true, "it lists this release")
+    equal(wow.FindText("An older highlight."), nil, "older releases aren't assumed unseen")
     equal(existing.hammerCore.whatsNewSeen, "1.2.3", "showing records the version")
     equal(wow.FindButton("Open General") ~= nil, true, "a highlight can open its settings page")
     local buttons = 0
@@ -554,15 +554,15 @@ do
         local text = rawget(frame, "Text")
         if type(text) == "table" and text.text == "Open General" and wow.Visible(frame) then buttons = buttons + 1 end
     end
-    equal(buttons, 1, "highlights sharing a page share one button")
-    equal(wow.FindText("- A cooldown bar.") ~= nil, true, "grouped highlights are all listed")
+    equal(buttons, 2, "each highlight with a page links to it")
+    equal(wow.FindText("A cooldown bar.") ~= nil, true, "grouped highlights are all listed")
 
     -- Seen before: only newer releases, and the empty one never counts.
     local seen = { hammerCore = { startupMessage = false, whatsNewSeen = "1.0.0" } }
     HC = start(seen)
     fire(HC, "PLAYER_ENTERING_WORLD")
-    equal(wow.FindText("- An older highlight.") ~= nil, true, "every unseen release is listed")
-    equal(wow.FindText("Version 1.0.5"), nil, "a release without highlights is left out")
+    equal(wow.FindText("An older highlight.") ~= nil, true, "every unseen release is listed")
+    equal(wow.FindText("TestAddon 1.0.5"), nil, "a release without highlights is left out")
 
     -- Up to date: nothing.
     local current = { hammerCore = { startupMessage = false, whatsNewSeen = "1.2.3", whatsNewSeenItems = 3 } }
@@ -574,8 +574,8 @@ do
     HC = start(added)
     fire(HC, "PLAYER_ENTERING_WORLD")
     equal(shown(HC), true, "a new highlight for a seen release shows")
-    equal(wow.Visible(wow.FindText("- A cooldown bar.")), true, "the new highlight is listed")
-    local old = wow.FindText("- Cooldown icons.")
+    equal(wow.Visible(wow.FindText("A cooldown bar.")), true, "the new highlight is listed")
+    local old = wow.FindText("Cooldown icons.")
     equal(old ~= nil and wow.Visible(old), false, "highlights already seen aren't")
     equal(added.hammerCore.whatsNewSeenItems, 3, "then all three are recorded as seen")
 
@@ -638,8 +638,8 @@ do
     end
     equal(windows, 1, "every addon's news shares one window")
     equal(wow.FindText("What's new in Consecrated Hammer addons") ~= nil, true, "the shared window names the family")
-    equal(wow.FindText("- First addon news.") ~= nil, true, "the first addon's news is listed")
-    equal(wow.FindText("- Second addon news.") ~= nil, true, "the second addon's news is listed")
+    equal(wow.FindText("First addon news.") ~= nil, true, "the first addon's news is listed")
+    equal(wow.FindText("Second addon news.") ~= nil, true, "the second addon's news is listed")
     equal(wow.FindText("OtherAddon") ~= nil, true, "each addon has a heading")
     local frame = A.WhatsNew.frame.shown and A.WhatsNew.frame or B.WhatsNew.frame
     equal(frame.icon.texture, "Interface\\GossipFrame\\AvailableQuestIcon", "the shared window has a neutral icon")
@@ -663,6 +663,78 @@ do
     B.WhatsNew:Hide()
     B.Commands:Dispatch("whatsnew")
     equal(wow.FindText("What's new in OtherAddon") ~= nil, true, "the command shows its own addon")
+end
+
+-- ── Grid layout, default columns and the shared pinned area ───────────────
+do
+    local HC = addon()
+    local UI = HC.UI
+    local seen = {}
+    HC.Settings:NewPage({ name = "Grid" }, function(panel, y)
+        seen.columns = panel.hcColumns
+        local _, next = UI.Check(panel, "Left cell", nil, y, function() return true end, function() end)
+        equal(next, y, "a left cell leaves y on its row")
+        local after = UI.Flush(panel, next - 4)
+        equal(after < y - UI.CELL_H, true, "Flush with a nudged y still clears the half row")
+        return after
+    end)
+    HC.Settings:NewPage({ name = "Notes", group = "reference" }, function(panel, y)
+        seen.reference = panel.hcColumns
+        return y
+    end)
+    HC.Settings:NewPage({
+        name = "Tabbed",
+        pinned = { height = 100, build = function(frame) seen.pinned = frame end },
+        tabs = {
+            { name = "One", build = function(panel, y) seen.one = seen.pinned; return y end },
+            { name = "Two", columns = 1, build = function(panel, y) seen.two = panel.hcColumns; return y end },
+        },
+    })
+    HC:Start()
+    HC.Settings:Show("Grid")
+    equal(seen.columns, 2, "settings pages default to two columns")
+    equal(seen.reference, 1, "reference pages stay single column")
+    equal(seen.one ~= nil, true, "the pinned area builds before the tabs")
+    equal(seen.two, 1, "a tab can ask for one column")
+    HC.Settings:Show("Tabbed", "Two")
+    equal(HC.Settings.pages.Tabbed.pinned:IsShown(), true, "the pinned area stays on every tab")
+end
+
+-- The capture prompt can offer Replace for a key that's taken.
+do
+    local HC = addon()
+    local Capture = HC.Bindings.Capture
+    local taken, forced = 0, 0
+    Capture:Start({
+        title = "Test", inputs = { mouse = true },
+        onKey = function()
+            taken = taken + 1
+            return "Right click is already assigned to Other.", function() forced = forced + 1 end
+        end,
+    })
+    local catcher = Capture.frame
+    catcher.scripts.OnMouseDown(catcher, "RightButton")
+    equal(taken, 1, "a refused click reaches onKey")
+    equal(Capture:IsActive(), true, "and keeps the prompt open")
+    equal(catcher.prompt.error.text, "Right click is already assigned to Other.", "with the reason")
+    equal(catcher.prompt.replace:IsShown(), true, "and a Replace button")
+    wow.Click(catcher.prompt.replace)
+    equal(forced, 1, "Replace takes the key anyway")
+    equal(Capture:IsActive(), false, "and closes the prompt")
+    Capture:Start({ title = "Again", inputs = { mouse = true }, onKey = function() return "Nope." end })
+    equal(catcher.prompt.replace:IsShown(), false, "Replace only shows when it's offered")
+    catcher.scripts.OnMouseDown(catcher, "LeftButton")
+    equal(catcher.prompt.replace:IsShown(), false, "even after an error")
+    local clicks = {}
+    Capture:Start({ title = "Box", inputs = { mouse = true, wheel = true },
+        onKey = function(key) clicks[#clicks + 1] = key end })
+    catcher.prompt.scripts.OnMouseDown(catcher.prompt, "RightButton")
+    equal(clicks[1], "BUTTON2", "a click on the prompt box itself binds")
+    Capture:Start({ title = "Box", inputs = { mouse = true, wheel = true },
+        onKey = function(key) clicks[#clicks + 1] = key end })
+    catcher.prompt.scripts.OnMouseWheel(catcher.prompt, 1)
+    equal(clicks[2], "MOUSEWHEELUP", "and so does the wheel over it")
+    Capture:Stop()
 end
 
 io.write("hammercore what's new tests passed\n")
