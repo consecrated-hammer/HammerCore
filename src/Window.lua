@@ -6,7 +6,7 @@ local T, UI = HC.Theme, HC.UI
 -- addon's name and lists its own pages under SETTINGS, a divider, then
 -- REFERENCE: What's new, any addon reference pages, then Commands,
 -- Troubleshooting and About.  The header band shows the page's title,
--- description and tabs; the footer has Reload UI, the support links and
+-- description and tabs; the footer has the support links and
 -- Close.  Blizzard's Options > AddOns entry is only a launcher.
 
 local Settings = { queue = {}, pages = {}, buttons = {} }
@@ -146,7 +146,7 @@ local function createBody(page, build, columns, top)
 
     content.hcSetBottom(build(content, -4) or -600)
     body:SetScript("OnShow", updateBar)
-    body.content = content
+    body.content, body.scroll = content, scroll
     return body
 end
 
@@ -377,8 +377,7 @@ function Settings:Create()
     if pageDescription.SetWordWrap then pageDescription:SetWordWrap(false) end
     self.pageTitle, self.pageDescription = pageTitle, pageDescription
 
-    -- Beside the title: the active profile, and whether this page's settings
-    -- are saved to it or shared by every profile.  Click for Profiles.
+    -- Beside the title: the active profile.  Click for Profiles.
     local tag = CreateFrame("Button", nil, header, "BackdropTemplate")
     tag:SetHeight(22)
     tag:SetPoint("LEFT", pageTitle, "RIGHT", 14, -1)
@@ -449,7 +448,7 @@ function Settings:Create()
     tabBar:SetHeight(32)
     self.tabBar = tabBar
 
-    -- ── Footer: reload, support links, close ──
+    -- ── Footer: support links, close; Reload UI only when one is needed ──
     local footer = CreateFrame("Frame", nil, frame)
     footer:SetPoint("BOTTOMLEFT", RAIL_WIDTH + 2, 1)
     footer:SetPoint("BOTTOMRIGHT", -1, 1)
@@ -462,8 +461,9 @@ function Settings:Create()
     local reload = UI.Button(footer, 150, 30)
     reload:SetPoint("LEFT", UI.PAD, 0)
     reload:SetText("Reload UI")
-    UI.AttachHint(reload, "Reload UI", "Reload the interface, as /reload does.")
+    UI.AttachHint(reload, "Reload UI", function() return Settings.reloadReason or "Reload the interface, as /reload does." end)
     reload:SetScript("OnClick", function() if ReloadUI then ReloadUI() end end)
+    reload:SetShown(self.reloadReason ~= nil)
     local done = UI.Button(footer, 150, 30)
     done:SetPoint("RIGHT", -UI.PAD, 0)
     done:SetText("Close")
@@ -727,9 +727,63 @@ function Settings:Select(name, tab)
     end
 end
 
--- spec.profileGroups = { "grid", ... }: the profile groups whose settings
--- live on this page.  Every main page of an addon with profiles shows the
--- tag; reference pages and the Profiles page itself don't.
+-- Open a page and draw the eye to one setting: scroll it into view and pulse
+-- its row twice.  `setting` is the row's label.  Returns the row, if found.
+local PULSE_TIME, PULSES = 1.6, 2
+local pulser = CreateFrame("Frame")
+pulser:Hide()
+pulser:SetScript("OnUpdate", function(self, elapsed)
+    local row = self.row
+    self.elapsed = (self.elapsed or 0) + elapsed
+    if not row or self.elapsed >= PULSE_TIME then
+        if row then row.hcPulse:Hide() end
+        self.row = nil
+        self:Hide()
+        return
+    end
+    local phase = self.elapsed / PULSE_TIME * PULSES * math.pi
+    row.hcPulse:SetAlpha(0.35 * math.abs(math.sin(phase)))
+end)
+Settings.pulser = pulser
+
+function Settings:Focus(name, setting, tab)
+    if not self:Show(name, tab) then return nil end
+    local page = self.pages[self.selected]
+    if not page then return nil end
+    local row, body
+    for tabName, candidate in pairs(page.bodies or {}) do
+        local found = candidate.hcRows and candidate.hcRows[setting]
+        if found then
+            row, body = found, candidate
+            if tabName ~= page.selectedTab then self:Select(self.selected, tabName) end
+            break
+        end
+    end
+    if not row then return nil end
+    -- Scroll so the row sits a little below the top of the view.
+    local scroll, content = body.scroll, body.content
+    if scroll and content and row.GetTop and content.GetTop then
+        local rowTop, contentTop = row:GetTop(), content:GetTop()
+        if rowTop and contentTop then
+            local range = scroll:GetVerticalScrollRange() or 0
+            scroll:SetVerticalScroll(math.max(0, math.min(range, contentTop - rowTop - 40)))
+        end
+    end
+    if not row.hcPulse then
+        row.hcPulse = row:CreateTexture(nil, "BACKGROUND", nil, 3)
+        row.hcPulse:SetAllPoints()
+        T.Fill(row.hcPulse, "accent")
+    end
+    if pulser.row and pulser.row ~= row then pulser.row.hcPulse:Hide() end
+    row.hcPulse:SetAlpha(0)
+    row.hcPulse:Show()
+    pulser.row, pulser.elapsed = row, 0
+    pulser:Show()
+    return row
+end
+
+-- Every main page of an addon with profiles shows the active profile;
+-- reference pages and the Profiles page itself don't.
 function Settings:RefreshProfileTag()
     local tag = self.profileTag
     if not tag then return end
@@ -739,31 +793,13 @@ function Settings:RefreshProfileTag()
         if other.spec and other.spec.profilesPage then self.profilesPageName = other.spec.name end
     end
     local profiles = HC.Profiles
-    local active, saved
+    local active
     if profiles and profiles.PageStatus and spec.group == "main" and not spec.profilesPage then
-        active, saved = profiles:PageStatus(spec.profileGroups)
+        active = profiles:PageStatus()
     end
     if not active then tag:Hide(); return end
-    local hint
-    if #saved > 0 then
-        tag.Text:SetText("Saved to profile: " .. active)
-        T.Text(tag.Text, "accent")
-        T.Border(tag, "accent")
-        hint = "These settings on this page are saved to the " .. active .. " profile: "
-            .. table.concat(saved, ", ") .. "."
-        if #saved < #(spec.profileGroups or {}) or spec.profilePartial then
-            hint = hint .. " Everything else here is shared by all profiles."
-        end
-    else
-        tag.Text:SetText("Shared by all profiles (active: " .. active .. ")")
-        T.Text(tag.Text, "muted")
-        T.Border(tag, "edge")
-        hint = "Changes on this page apply to every profile."
-        if spec.profileGroups and #spec.profileGroups > 0 then
-            hint = hint .. " Tick it under Included in profiles to save it per profile."
-        end
-    end
-    tag.hcHintTitle, tag.hcHint = "Profile", hint .. " Click to manage profiles."
+    tag.Text:SetText("Profile: " .. active)
+    tag.hcHintTitle, tag.hcHint = "Profile", "Click to manage profiles."
     tag:SetWidth((tag.Text.GetStringWidth and tag.Text:GetStringWidth() or 160) + 20)
     tag:SetEnabled(self.profilesPageName ~= nil)
     tag:Show()
@@ -788,6 +824,14 @@ function Settings:RefreshHeaderAction()
         button.hcHint = nil
     end
     button:Show()
+end
+
+-- Shows Reload UI in the footer, with why as its hint.  No addon needs a
+-- reload button by default (Kevin, 2026-11-10): call this only when a change
+-- really takes effect after a reload.
+function Settings:RequestReload(reason)
+    self.reloadReason = reason or "Some changes take effect after a reload."
+    if self.reloadButton then self.reloadButton:Show() end
 end
 
 function Settings:IsShown()

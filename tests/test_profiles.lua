@@ -37,9 +37,9 @@ local function addon(saved)
     local P = HC.Profiles
     P:Setup({
         groups = {
-            { key = "position", label = "Position", keys = { "point" }, default = true },
-            { key = "grid", label = "Grid", keys = { "columns", "scale", "previewUnits" }, default = true },
-            { key = "names", label = "Names", keys = { "showNames" }, default = false },
+            { key = "position", label = "Position", keys = { "point" } },
+            { key = "grid", label = "Grid", keys = { "columns", "scale", "previewUnits" } },
+            { key = "names", label = "Names", keys = { "showNames" } },
         },
         defaults = function() return DEFAULTS end,
         seed = {
@@ -67,7 +67,7 @@ do
     equal(P:Loaded(), "Party", "starts on the seeded active profile")
     equal(saved.hcProfiles.list["Raid 40"].columns, 8, "seeds copy the current layout")
     equal(saved.hcProfiles.list["Raid 40"].previewUnits, 40, "seed overrides apply")
-    equal(saved.hcProfiles.list.Party.showNames, nil, "excluded groups are not stored")
+    equal(saved.hcProfiles.list.Party.showNames, true, "every group is stored per profile")
     equal(#saved.hcProfiles.auto.rules, 3, "starter rules")
     equal(saved.hcProfiles.auto.mode, "OFF", "auto-switch starts off")
     assert(HC.Commands.byName.profile, "profile command registered")
@@ -137,21 +137,19 @@ do
     equal(ok, false, "the last profile cannot be deleted")
 end
 
--- Including a group gives every profile the shared value; excluding drops it.
+-- A group players had left shared (before 0.3.2) joins every profile with
+-- the value in use, so nothing changes until a profile is edited.
 do
-    local _, P, saved = addon()
-    saved.showNames = true
-    P:SetIncluded("names", true)
-    equal(saved.hcProfiles.list["Raid 40"].showNames, true, "included groups seed every profile")
-    P:Switch("Raid 40", "manual")
-    saved.showNames = false
-    P:Switch("Party", "manual")
-    equal(saved.showNames, true, "an included group now switches")
-    P:SetIncluded("names", false)
-    equal(saved.hcProfiles.list.Party.showNames, nil, "excluded groups are dropped")
-    saved.showNames = false
-    P:Switch("Raid 40", "manual")
-    equal(saved.showNames, false, "an excluded group is shared")
+    local saved = { point = { "CENTER", "CENTER", 0, 0 }, columns = 6, scale = 1, showNames = true, previewUnits = 5,
+        hcProfiles = { active = "Party", loaded = "Party", groups = { names = false },
+            list = { Party = { columns = 6 }, Raid = { columns = 9, showNames = false } } } }
+    local _, P = addon(saved)
+    equal(saved.hcProfiles.groups.names, true, "the old shared group is now in profiles")
+    equal(saved.hcProfiles.list.Party.showNames, true, "a profile without the key takes the current value")
+    equal(saved.hcProfiles.list.Raid.showNames, false, "a stored value is kept")
+    equal(P:Included("names"), true, "every group is included")
+    P:Switch("Raid", "manual")
+    equal(saved.showNames, false, "the group now switches")
 end
 
 -- Per-character profiles remember each character's own choice.
@@ -325,26 +323,56 @@ end
 
 print("profiles tests passed")
 
--- Each main page says which profile is active and whether it saves to it.
+-- Each main page shows the active profile; clicking it opens Profiles.
 do
     local HC, P = addon()
     P:NewPage({})
-    HC.Settings:NewPage({ name = "Layout", profileGroups = { "grid" } }, function(_, y) return y end)
-    HC.Settings:NewPage({ name = "Text", profileGroups = { "names" } }, function(_, y) return y end)
-    HC.Settings:NewPage({ name = "Alerts" }, function(_, y) return y end)
+    HC.Settings:NewPage({ name = "Layout" }, function(_, y) return y end)
     local tag = function() return HC.Settings.profileTag end
     assert(HC.Settings:Show("Layout"), "settings open")
-    equal(tag().Text:GetText(), "Saved to profile: Party", "a profile page names its profile")
-    HC.Settings:Select("Text")
-    equal(tag().Text:GetText(), "Shared by all profiles (active: Party)", "an unticked group is shared")
-    P:SetIncluded("names", true)
-    P.RefreshSettings()
-    equal(tag().Text:GetText(), "Saved to profile: Party", "ticking the group saves it per profile")
-    HC.Settings:Select("Alerts")
-    equal(tag().Text:GetText(), "Shared by all profiles (active: Party)", "a page outside profiles is shared")
+    equal(tag().Text:GetText(), "Profile: Party", "the tag names the active profile")
+    equal(tag().hcHint, "Click to manage profiles.", "the hint is just the click")
     P:Switch("Raid 20", "manual")
     P.RefreshSettings()
-    equal(tag().Text:GetText(), "Shared by all profiles (active: Raid 20)", "the tag follows a switch")
-    HC.Settings:Select("Profiles")
+    equal(tag().Text:GetText(), "Profile: Raid 20", "the tag follows a switch")
+    tag().scripts.OnClick(tag())
+    equal(HC.Settings.selected, "Profiles", "the tag opens Profiles")
     equal(tag():IsShown(), false, "the Profiles page needs no tag")
+end
+
+-- Reload UI stays hidden until something needs it.
+do
+    local HC = addon()
+    assert(HC.Settings:Show(), "settings open")
+    equal(HC.Settings.reloadButton:IsShown(), false, "no Reload UI by default")
+    HC.Settings:RequestReload("Font changes apply after a reload.")
+    equal(HC.Settings.reloadButton:IsShown(), true, "a needed reload shows the button")
+    equal(HC.Settings.reloadReason, "Font changes apply after a reload.", "the hint says why")
+end
+
+-- A setting link opens the page and pulses the setting's row.
+do
+    local HC = addon()
+    local UI = HC.UI
+    HC.Settings:NewPage({ name = "Display" }, function(panel, y)
+        _, y = UI.Check(panel, "Show handle", nil, y, function() return true end, function() end)
+        _, y = UI.Dropdown(panel, "Right-click", nil, y, { "A" }, { "A" }, function() return "A" end, function() end)
+        return y
+    end)
+    HC.Settings:NewPage({ name = "Profiles hub" }, function(panel, y)
+        local link
+        link, y = UI.SettingLink(panel, y, "Right-click options", "Display", "Right-click")
+        HC.testLink = link
+        return y
+    end)
+    assert(HC.Settings:Show("Profiles hub"), "settings open")
+    HC.testLink.scripts.OnClick(HC.testLink)
+    equal(HC.Settings.selected, "Display", "the link opens the setting's page")
+    local row = HC.Settings.pulser.row
+    assert(row and row.hcPulse and row.hcPulse:IsShown(), "the setting's row pulses")
+    equal(row.hcHintTitle or (row.Title and row.Title:GetText()), "Right-click", "the right row pulses")
+    HC.Settings.pulser.scripts.OnUpdate(HC.Settings.pulser, 2)
+    equal(row.hcPulse:IsShown(), false, "the pulse fades out")
+    assert(HC.Settings:Focus("Display", "Show handle"), "a switch row can be focused too")
+    equal(HC.Settings:Focus("Display", "Nope"), nil, "an unknown setting finds nothing")
 end

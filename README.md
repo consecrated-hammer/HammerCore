@@ -196,10 +196,10 @@ HC.Profiles:Setup({
 - Call `HC.Profiles:Ready()` once saved variables exist (in `ADDON_LOADED`,
   before `HC:Start()`). It repairs the saved shape, seeds the starter
   profiles the first time and loads this character's profile.
-- Players choose which groups belong to profiles (`Included in profiles`).
-  A group that's ticked out is shared by every profile.
+- Every group is saved per profile; players don't choose. Say what a
+  profile saves in the page's `extra` rows.
 - `HC.Profiles:NewPage({ extra = fn })` adds the standard Profiles page:
-  management, Included in profiles, the addon's `extra` rows, then
+  management, the addon's `extra` rows, then
   Auto-switch with editable rule cards. `HC.Profiles:Selector(panel, y)` is
   the Profile dropdown and Save as new button for the top of another page.
 - `HC.Profiles:MenuItems()` returns menu items for quick switching, and

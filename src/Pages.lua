@@ -28,6 +28,8 @@ Pages.visibility.build = function(panel, y)
             HC.State().minimap = value
             HC.Minimap:Update()
         end)
+    -- Addon rows about the minimap button, such as what right-click does.
+    if HC.spec.visibilityMinimap then y = HC.spec.visibilityMinimap(panel, y) end
     _, y = UI.Check(panel, "Show startup message", "Print the loaded version when you log in.", y,
         function() return HC.State().startupMessage end,
         function(value) HC.State().startupMessage = value end)

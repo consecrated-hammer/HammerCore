@@ -5,6 +5,32 @@ All notable changes to HammerCore are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2] - 2026-11-10
+
+### Changed
+
+- **Profiles are the whole layout.** Every declared group is saved per
+  profile; players no longer choose. The "Included in profiles" section is
+  gone. On load, a group a player had left shared joins every profile with
+  the value in use. `Profiles:SetIncluded` and the group `default` field are
+  gone; `Profiles:Included` is true for every declared group.
+- **Profile tag.** Shows "Profile: <name>" on every main page; click for
+  Profiles. `spec.profileGroups` and `spec.profilePartial` are no longer used.
+  `Profiles:PageStatus()` returns just the active profile.
+
+- **Reload UI** is no longer in the settings footer. `HC.Settings:
+  RequestReload(reason)` shows it, with the reason as its hint, when a change
+  really needs a reload. The theme picker keeps its own Reload to apply.
+
+### Added
+
+- `HC.Settings:Focus(page, setting)` opens a page, scrolls to the row with
+  that label and pulses it twice. `UI.SettingLink(panel, y, text, page,
+  setting)` is a link that does it. Rows register their label as they're
+  built (`UI.RegisterRow`).
+- `HC.spec.visibilityMinimap(panel, y)`: addon rows right under Show minimap
+  button on Visibility.
+
 ## [0.3.1] - 2026-11-09
 
 ### Added
