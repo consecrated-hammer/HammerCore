@@ -677,6 +677,28 @@ local function checklist(btn, panel, spec, render)
         T.Surface(menu, "menu", "menuEdge")
         local menuWidth, cursorY = btn:GetWidth(), -5
         controls = {}
+        -- spec.bulk: Select all / Deselect all across the top, as in
+        -- Blizzard's own filter menus. true sets every tickable item; a
+        -- function(selected) does it the addon's way (keeping one, say).
+        if spec.bulk then
+            local function bulk(selected)
+                if type(spec.bulk) == "function" then
+                    spec.bulk(selected)
+                else
+                    for _, item in ipairs(spec.items) do
+                        if not item.heading and not item.radio and not resolve(item.disabled) then item.set(selected) end
+                    end
+                end
+                refreshAll(panel)
+                render()
+                refreshChecks()
+            end
+            local all = UI.Link(menu, "Select all", function() bulk(true) end)
+            all:SetPoint("TOPLEFT", 12, cursorY - 6)
+            local none = UI.Link(menu, "Deselect all", function() bulk(false) end)
+            none:SetPoint("LEFT", all, "RIGHT", 14, 0)
+            cursorY = cursorY - 28
+        end
         for _, item in ipairs(spec.items) do
             if item.heading then
                 local heading = UI.FontString(menu, "GameFontDisableSmall", "muted")
