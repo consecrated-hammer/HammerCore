@@ -352,6 +352,7 @@ function Settings:Create()
 
     -- ── Header band: title, description, scale, close, tabs ──
     local header = CreateFrame("Frame", nil, frame)
+    self.header, self.headerWidth = header, width - RAIL_WIDTH - 3
     header:SetPoint("TOPLEFT", RAIL_WIDTH + 2, -1)
     header:SetPoint("TOPRIGHT", -1, -1)
     header:SetHeight(HEADER_HEIGHT)
@@ -372,7 +373,6 @@ function Settings:Create()
     pageTitle:SetPoint("TOPLEFT", UI.PAD + 4, -20)
     local pageDescription = UI.FontString(header, "GameFontHighlightSmall", "muted")
     pageDescription:SetPoint("TOPLEFT", pageTitle, "BOTTOMLEFT", 1, -8)
-    pageDescription:SetPoint("RIGHT", header, "RIGHT", -260, 0)
     pageDescription:SetJustifyH("LEFT")
     if pageDescription.SetWordWrap then pageDescription:SetWordWrap(false) end
     self.pageTitle, self.pageDescription = pageTitle, pageDescription
@@ -421,8 +421,8 @@ function Settings:Create()
 
     -- A page's own action (spec.headerAction), such as opening a live
     -- preview, on the right of the header under the window controls.
-    local action = UI.Button(header, 170, 26)
-    action:SetPoint("TOPRIGHT", close, "BOTTOMRIGHT", 0, -14)
+    local action = UI.Button(header, 170, 24)
+    action:SetPoint("TOPRIGHT", header, "TOPRIGHT", -UI.PAD, -52)
     action:Hide()
     action:SetScript("OnClick", function(self)
         local spec = self.hcSpec
@@ -440,6 +440,8 @@ function Settings:Create()
     end)
     scale:SetScript("OnMouseUp", function() Settings:ApplyScale() end)
     self.scaleSlider = scale
+
+    self:CreateSearch(header)
 
     self.tabButtons = {}
     local tabBar = CreateFrame("Frame", nil, header)
@@ -603,10 +605,12 @@ function Settings:Create()
         Settings:RefreshHeaderAction()
     end)
     frame:SetScript("OnHide", function()
+        Settings:ClearSearch()
         if HC.spec.onSettingsHidden then HC.spec.onSettingsHidden() end
     end)
     self:ApplyScale()
     self:RefreshFooter()
+    self:RefreshSearch()
     frame:Hide()
     -- Escape closes the window like any Blizzard panel.
     if UISpecialFrames then UISpecialFrames[#UISpecialFrames + 1] = frame:GetName() end
@@ -782,6 +786,227 @@ function Settings:Focus(name, setting, tab)
     return row
 end
 
+-- The name of the profiles page, from the page list, so it works before the
+-- window is built.  nil for an addon without profiles.
+function Settings:ProfilesPageName()
+    for _, spec in ipairs(self.queue) do
+        if spec.profilesPage then return spec.name end
+    end
+    return self.profilesPageName
+end
+
+-- ── Settings search ────────────────────────────────────────────────────────
+-- A box in the header finds a setting by page, tab, label or tooltip text
+-- and jumps to it with Settings:Focus.  Every page builds when the window
+-- does, and each row registers its label in its body's hcRows, so the index
+-- is read fresh from those on every search.
+
+Settings.SEARCH_LIMIT = 8
+Settings.SEARCH_WIDTH = 220
+
+local function plain(value)
+    if type(value) == "function" then
+        local ok, result = pcall(value)
+        value = ok and result or nil
+    end
+    if type(value) ~= "string" then return "" end
+    return (value:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", ""):gsub("|T.-|t", ""))
+end
+
+local function words(query)
+    local list = {}
+    for word in tostring(query or ""):lower():gmatch("%S+") do list[#list + 1] = word end
+    return list
+end
+
+-- Matches for a query, best first: { page, title, tab, label, text }.
+-- A label that starts with the query ranks first, then a label containing
+-- it, then a match anywhere in page, tab, label and tooltip.
+function Settings:Search(query, limit)
+    local terms = words(query)
+    if #terms == 0 or not self.window then return {} end
+    local whole = table.concat(terms, " ")
+    local found = {}
+    for order, spec in ipairs(self.order or {}) do
+        local page = self.pages[spec.name]
+        local title = spec.title or spec.name
+        local multi = page and page.tabs and #page.tabs > 1
+        for tabIndex, tab in ipairs(page and page.tabs or {}) do
+            local body = page.bodies and page.bodies[tab]
+            for label, row in pairs(body and body.hcRows or {}) do
+                local visible = not (row.IsShown and row:IsShown() == false)
+                if visible and type(label) == "string" then
+                    local hay = (title .. " " .. (multi and tab or "") .. " " .. label .. " "
+                        .. plain(row.hcHint)):lower()
+                    local all = true
+                    for _, term in ipairs(terms) do
+                        if not hay:find(term, 1, true) then all = false; break end
+                    end
+                    if all then
+                        local lower = label:lower()
+                        local rank = lower:sub(1, #whole) == whole and 1 or (lower:find(whole, 1, true) and 2 or 3)
+                        found[#found + 1] = { page = spec.name, title = title, tab = tab, label = label,
+                            text = title .. " \226\128\186 " .. label,
+                            rank = rank, order = order, tabIndex = tabIndex }
+                    end
+                end
+            end
+        end
+    end
+    table.sort(found, function(a, b)
+        if a.rank ~= b.rank then return a.rank < b.rank end
+        if a.order ~= b.order then return a.order < b.order end
+        if a.tabIndex ~= b.tabIndex then return a.tabIndex < b.tabIndex end
+        return a.label < b.label
+    end)
+    limit = limit or self.SEARCH_LIMIT
+    for index = #found, limit + 1, -1 do found[index] = nil end
+    return found
+end
+
+function Settings:CreateSearch(header)
+    local box = CreateFrame("EditBox", nil, header, "BackdropTemplate")
+    box:SetSize(self.SEARCH_WIDTH, 24)
+    box:SetPoint("TOPRIGHT", header, "TOPRIGHT", -UI.PAD, -52)
+    box:SetAutoFocus(false)
+    box:SetFontObject(ChatFontNormal)
+    box:SetTextInsets(8, 8, 0, 0)
+    if box.SetMaxLetters then box:SetMaxLetters(60) end
+    T.Surface(box, "field", "edge")
+    local placeholder = UI.FontString(box, "GameFontHighlightSmall", "muted")
+    placeholder:SetPoint("LEFT", 9, 0)
+    placeholder:SetText("Search settings")
+    box.placeholder = placeholder
+
+    local dismiss = CreateFrame("Button", nil, UIParent)
+    dismiss:SetFrameStrata("FULLSCREEN_DIALOG")
+    dismiss:SetFrameLevel(199)
+    dismiss:SetAllPoints(UIParent)
+    dismiss:EnableMouse(true)
+    dismiss:Hide()
+    local results = CreateFrame("Frame", HC.FrameName("SettingsSearch"), UIParent, "BackdropTemplate")
+    results:SetFrameStrata("FULLSCREEN_DIALOG")
+    results:SetFrameLevel(200)
+    results:SetClampedToScreen(true)
+    results:SetPoint("TOPRIGHT", box, "BOTTOMRIGHT", 0, -4)
+    T.Surface(results, "menu", "menuEdge")
+    results:SetScript("OnHide", function() dismiss:Hide() end)
+    dismiss:SetScript("OnClick", function()
+        results:Hide()
+        if box.ClearFocus then box:ClearFocus() end
+    end)
+    results:Hide()
+    results.rows = {}
+    local empty = UI.FontString(results, "GameFontHighlightSmall", "muted")
+    empty:SetPoint("TOPLEFT", 12, -10)
+    empty:SetText("No matches")
+    results.empty = empty
+
+    box:SetScript("OnTextChanged", function() Settings:UpdateSearch() end)
+    box:SetScript("OnEnterPressed", function()
+        local first = results.matches and results.matches[1]
+        if first then Settings:PickSearch(first) else Settings:ClearSearch() end
+    end)
+    box:SetScript("OnEscapePressed", function() Settings:ClearSearch() end)
+    box:SetScript("OnEditFocusGained", function() Settings:UpdateSearch() end)
+    UI.AttachHint(box, "Settings search", "Find a setting by name. Enter opens the first match.")
+    self.searchBox, self.searchResults, self.searchDismiss = box, results, dismiss
+    return box
+end
+
+local function resultRow(results, index)
+    local row = results.rows[index]
+    if row then return row end
+    row = CreateFrame("Button", nil, results, "BackdropTemplate")
+    T.Surface(row, "transparent")
+    row.label = UI.FontString(row, "GameFontHighlightSmall")
+    row.label:SetPoint("LEFT", 8, 0)
+    row.label:SetPoint("RIGHT", -8, 0)
+    row.label:SetJustifyH("LEFT")
+    if row.label.SetWordWrap then row.label:SetWordWrap(false) end
+    row:HookScript("OnEnter", function(self) self:SetBackdropColor(T.Unpack("menuActive")) end)
+    row:HookScript("OnLeave", function(self) self:SetBackdropColor(T.Unpack("transparent")) end)
+    row:SetScript("OnClick", function(self)
+        if self.match then Settings:PickSearch(self.match) end
+    end)
+    results.rows[index] = row
+    return row
+end
+
+function Settings:UpdateSearch()
+    local box, results = self.searchBox, self.searchResults
+    if not (box and results) then return end
+    local text = box:GetText() or ""
+    box.placeholder:SetShown(text == "")
+    local ok, matches = pcall(self.Search, self, text)
+    if not ok then matches = {} end
+    results.matches = matches
+    if text:match("^%s*$") then results:Hide(); return end
+    local width = math.max(self.SEARCH_WIDTH, 300)
+    for index, match in ipairs(matches) do
+        local row = resultRow(results, index)
+        row.match = match
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", 5, -5 - (index - 1) * 24)
+        row:SetSize(width - 10, 24)
+        row.label:SetText(match.text)
+        row:SetBackdropColor(T.Unpack("transparent"))
+        row:Show()
+    end
+    for index = #matches + 1, #results.rows do results.rows[index]:Hide() end
+    results.empty:SetShown(#matches == 0)
+    results:SetSize(width, math.max(1, #matches) * 24 + 10)
+    self.searchDismiss:Show()
+    results:Show()
+end
+
+function Settings:PickSearch(match)
+    self:ClearSearch()
+    return self:Focus(match.page, match.label, match.tab)
+end
+
+function Settings:ClearSearch()
+    local box = self.searchBox
+    if not box then return end
+    if self.searchResults then self.searchResults:Hide() end
+    if (box:GetText() or "") ~= "" then box:SetText("") end
+    box.placeholder:Show()
+    if box.ClearFocus then box:ClearFocus() end
+end
+
+-- The box follows the "Settings search" setting on Visibility.
+function Settings:RefreshSearch()
+    local box = self.searchBox
+    if not box then return end
+    local state = HC.State()
+    local shown = not (state and state.settingsSearch == false)
+    if not shown then self:ClearSearch() end
+    box:SetShown(shown)
+    self:LayoutHeaderTools()
+end
+
+-- Search and the optional page action share a row above the tabs. Reserve
+-- their actual space so the page description cannot run underneath them.
+function Settings:LayoutHeaderTools()
+    local header, action, box = self.header, self.headerAction, self.searchBox
+    if not header then return end
+    local searchShown = box and box:IsShown()
+    local actionShown = action and action:IsShown()
+    local reserved = searchShown and (box:GetWidth() + 12) or 0
+    if action then
+        action:ClearAllPoints()
+        if searchShown then
+            action:SetPoint("RIGHT", box, "LEFT", -12, 0)
+        else
+            action:SetPoint("TOPRIGHT", header, "TOPRIGHT", -UI.PAD, -52)
+        end
+        if actionShown then reserved = reserved + action:GetWidth() + 12 end
+    end
+    if self.pageDescription then
+        self.pageDescription:SetWidth(math.max(1, (self.headerWidth or 0) - UI.PAD * 2 - 5 - reserved))
+    end
+end
+
 -- Every main page of an addon with profiles shows the active profile;
 -- reference pages and the Profiles page itself don't.
 function Settings:RefreshProfileTag()
@@ -812,7 +1037,7 @@ function Settings:RefreshHeaderAction()
     local page = self.selected and self.pages[self.selected]
     local spec = page and page.spec and page.spec.headerAction
     button.hcSpec = spec
-    if not spec then button:Hide(); return end
+    if not spec then button:Hide(); self:LayoutHeaderTools(); return end
     local text = spec.text
     if type(text) == "function" then text = text() end
     button:SetText(tostring(text or ""))
@@ -824,6 +1049,7 @@ function Settings:RefreshHeaderAction()
         button.hcHint = nil
     end
     button:Show()
+    self:LayoutHeaderTools()
 end
 
 -- Shows Reload UI in the footer, with why as its hint.  No addon needs a

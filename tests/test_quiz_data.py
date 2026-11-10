@@ -75,5 +75,32 @@ class QuizDataTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, '25 words'):
             module.validate([first, second])
 
+    def test_retired_questions_are_kept_out_of_the_bank(self):
+        retired = dict(self.row, id='test-retired', question='Which other place is this?', retired=True)
+        module.validate([self.row, retired])
+        files = module.render([self.row, retired])
+        self.assertEqual(sum(text.count('    { ') for text in files.values()), 1)
+        self.rejected(dict(retired='yes'))
+
+    def test_ledger_keeps_shipped_ids(self):
+        import tempfile
+        rows = [self.row]
+        missing, new = module.ledger_problems(rows, [])
+        self.assertEqual((missing, new), ([], ['test-sourced-question']))
+        missing, new = module.ledger_problems(rows, ['test-sourced-question', 'gone-question'])
+        self.assertEqual((missing, new), (['gone-question'], []))
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'ids.txt'
+            module.write_ledger(['a-one'], ['b-two'], path)
+            self.assertEqual(module.read_ledger(path), ['a-one', 'b-two'])
+            self.assertTrue(path.read_text().startswith('#'))
+
+    def test_shipped_bank_matches_ledger(self):
+        rows = []
+        for path in sorted((ROOT / 'data/quiz').glob('*.jsonl')):
+            rows.extend(__import__('json').loads(line) for line in path.read_text().splitlines() if line.strip())
+        missing, new = module.ledger_problems(rows, module.read_ledger())
+        self.assertEqual((missing, new), ([], []))
+
 if __name__ == '__main__':
     unittest.main()

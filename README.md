@@ -82,10 +82,10 @@ HC:Start()
 |---|---|
 | Chat | `Name:` prefix in `|cffd4af37`; `HC.Print(message)` |
 | Login | `Name v1.2.3 loaded - type /cmd for settings, /cmd help for commands` |
-| Core commands | `/cmd`, `help`, `version`, `about`, `debug`, `startup [on\|off]`, `minimap [on\|off]`, `reset position`, `reset settings`, `quiz`, plus `whatsnew [reset\|sound]` with `spec.whatsNew` (hidden: `theme`, `quiz timer`) |
+| Core commands | `/cmd`, `help`, `version`, `about`, `debug`, `startup [on\|off]`, `minimap [on\|off]`, `reset position`, `reset settings`, `quiz`, plus `whatsnew [reset\|sound]` with `spec.whatsNew` and `setup` with a welcome window (hidden: `theme`, `quiz timer`) |
 | Shared verbs | `toggle`, `lock`, `unlock`, present only when the addon supplies them |
 | Settings rail | Addon pages under CORE, a divider, then REFERENCE: addon reference pages, Commands, Troubleshooting, About (Theme is withheld for now) |
-| Visibility | "Show startup message" and "Show minimap button", plus `spec.visibility(panel, y)`. The page goes last in CORE unless placed with `HC.Settings:AddVisibility()` |
+| Visibility | "Show startup message", "Show minimap button", "Minimap right-click" (Menu or Settings) and "Settings search", plus `spec.visibility(panel, y)`. The page goes last in CORE unless placed with `HC.Settings:AddVisibility()` |
 
 With `spec.whatsNew`, the first login after an update opens a short list of
 the highlights for every release newer than the one the player last saw. A
@@ -113,6 +113,31 @@ first, each release in its own card, with a quest-style "!" on its rail button u
 written after the fact: the page lists them under Earlier releases, the popup
 never shows them, and `whatsnew_check.py` doesn't require entries for every
 patch around them.
+
+**Minimap menu.** Right-clicking the minimap button opens a menu: "<Name>
+settings", "Profiles" when the addon uses profiles, then a line and the
+addon's own items from `minimap.menu` (a function or a table of `HC.Menu`
+items). `HC.Minimap:OpenMenu(anchor)` opens the same menu from another frame.
+"Minimap right-click" on Visibility switches it to opening settings. An addon
+that still passes `minimap.rightClick` keeps its own behaviour, and the
+setting is hidden.
+
+**Settings search.** A search box at the bottom right of the settings header
+finds any setting by page, tab, label or tooltip and jumps to it with
+`Settings:Focus`. `HC.Settings:Search(query)` returns `{ page, tab, label,
+text }` matches. "Settings search" on Visibility hides it.
+
+**Welcome window.** `HC.Welcome:Register(spec)` before `HC:Start` gives the
+addon a small setup window: a banner, a tagline, a short intro, then one row
+of choice buttons per setting. The current value is highlighted and a click
+applies it straight away. Defaults are already in place, so Done, Esc or
+closing keeps them. A new install sees every row; an update sees only rows
+whose `since` is newer than the last welcome, and nothing at all if none are.
+It opens a few seconds after login, never in combat, and replaces that
+login's What's new popup (the release stays on the What's new page). Welcome
+windows from several addons queue, and the shared What's new waits for them.
+Players get `setup`, plus "Setup on new features" and **Run setup again** on
+Visibility. See the top of `src/Welcome.lua` for the spec.
 
 HammerCore keeps its state in `db.hammerCore`, and on first run adopts the
 keys named in `spec.legacy`. `reset settings` clears `spec.savedVariable`
@@ -230,6 +255,13 @@ after `QuizData.lua` initialises the shared table. Curated source rows live in
 or `--check` to verify the generated files are current. Each added row keeps
 a stable ID, source URL, explicit client tag, difficulty and one or more
 category tags. An entry appears once even when several categories match.
+
+**Question IDs never change.** Loreforge picks its daily question from the
+IDs, so `data/quiz/ids.txt` records every ID that has shipped. The generator
+adds new IDs to it, and `--check` fails if a shipped ID has gone missing or
+a new one isn't recorded yet. Fixing a typo or a wrong answer keeps the ID; a
+different question gets a new one. To drop a bad question, set
+`"retired": true` on its row: it leaves the bank but its ID stays reserved.
 `classic` specifically means WoW Forever, not every Classic-derived client.
 
 Generated category files use lightweight seeded byte obfuscation to discourage
@@ -243,6 +275,45 @@ Loreforge uses these tags for hosted games without filtering by the host's
 class or race. The solo quiz still uses the character filters. It now has six
 result lines per score, chosen once when a run ends; repeating a score avoids
 the previous line for that score during the current login session.
+
+### Flights
+
+`HC.Flights` tracks flight paths for any addon that asks. Pass
+`flights = true` to `HC:Init`; addons without it hook nothing.
+
+- `HC.Flights:Current()` returns the flight in progress, or nil:
+  `from`, `to`, `elapsed`, `seconds`, `remaining`, `source` (`learned`,
+  `libtaxidata` or `unknown`), `early` and `resumed`. `seconds` and
+  `remaining` are nil when the time is unknown.
+- `HC.Flights:Estimate(slot)` gives a destination's time while the flight
+  map is open: seconds, source and the route.
+- `HC.Flights:OnTakeoff(fn)` and `HC.Flights:OnLanding(fn)` call back with
+  the same table. Landing adds `learned`, and `early` after an early
+  landing. A reload mid-flight comes back as a `resumed` flight with no
+  route or time.
+
+Times come from a learned time for the route first, then LibTaxiData's leg
+lengths (`LibTaxiData_API`) at 30.4 yards a second, sped up 20% by Frequent
+Flier, then unknown. Normal landings of 10 seconds or more are learned;
+early landings aren't.
+
+Learned times are shared by every flights addon through the
+`ConsecratedHammerFlights` global. Each addon still saves them in its own
+HammerCore state, merged at start, so removing one addon loses nothing.
+They're stored at normal speed, so one entry serves both speeds.
+
+HammerCore never needs LibTaxiData, but an addon that turns flights on must
+declare it in every TOC (`## Dependencies` or `## OptionalDeps`) and in
+`.pkgmeta` (`required-dependencies` or `optional-dependencies`). `check.py`
+fails otherwise. Required makes the CurseForge app install it; optional only
+offers it. Choose optional while LibTaxiData lacks a build for a client the
+addon supports, or the game won't load the addon there.
+An addon that only needs takeoff and landing passes
+`flights = { estimates = false }`: no flight times, nothing saved, and no
+LibTaxiData declaration needed.
+Diagnostics gain a Flights section, and Troubleshooting gains a Flight
+times section: whether LibTaxiData is installed, routes learned, and a
+**Get LibTaxiData** button with its CurseForge link.
 
 ### Themes
 
@@ -266,11 +337,13 @@ Classic. Everything else follows from the colour roles.
 | Tool | Purpose |
 |---|---|
 | `tools/sync.py <addon>` | Vendor `src/` into `<addon>/Libs/HammerCore`, pinned to HEAD (commit first) |
-| `tools/check.py <addon>` | Fail if the vendored copy differs from its pinned commit |
+| `tools/check.py <addon>` | Fail if the vendored copy differs from its pinned commit, or a flights addon doesn't declare LibTaxiData (required or optional) |
 | `tools/toc_check.py <addon>` | Fail if a TOC does not load exactly the addon's Lua files, following XML |
 | `tools/stage.py <addon>` | Stage `-devN` builds into the Retail and Forever client folders. Add `--discord [--note TEXT]` to post the zip too |
 | `tools/discord_dev.py <addon>` | Zip the staged dev build and post it to the Discord dev-builds channel (`DEV_BUILDS_WEBHOOK_URL` in the host automation env). `--dry-run DIR` builds without posting |
 | `tools/new_addon.py <Name>` | Scaffold a new addon |
+| `tools/release_check.py <addon> --version X` | Run every release check (TOCs, TOC version, What's new, vendored HammerCore, Lua and Python tests, CHANGELOG heading, clean tree) and print one PASS or FAIL. `--allow-dirty` warns instead, `--skip-tests` skips tests, `--lua PATH` uses a local Lua instead of Docker |
+| `tools/status.py` | Show what's parked in every addon repo: uncommitted files, unpushed commits, vendored HammerCore, staged dev builds, `[Unreleased]` notes and CurseForge descriptions waiting to be pasted. `--write` updates the wiki's Addon status page |
 
 Never edit an addon's `Libs/HammerCore` directly. Change HammerCore, test,
 commit, then run `sync.py`. Addon CI runs `check.py`.
@@ -286,6 +359,8 @@ workflows run this before packaging.
 ```sh
 docker run --rm -v "$PWD:/r" -w /r nickblah/lua:5.1-alpine lua tests/test_core.lua
 docker run --rm -v "$PWD:/r" -w /r nickblah/lua:5.1-alpine lua tests/test_profiles.lua
+docker run --rm -v "$PWD:/r" -w /r nickblah/lua:5.1-alpine lua tests/test_flights.lua
+python3 -m unittest discover -s tests -p 'test_*check*.py'
 python3 tests/test_tools.py   # needs lua5.1 and a committed checkout
 ```
 

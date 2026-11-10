@@ -5,6 +5,56 @@ All notable changes to HammerCore are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-11-10
+
+HammerCore 0.5.0, which includes the unreleased 0.4.0 work.
+
+### Added
+
+- **Flights.** `HC.Flights` tracks flight paths for addons that pass
+  `flights = true` to `HC:Init`: takeoff and landing callbacks, the flight
+  in progress with its time left, and estimates on the flight map. Times
+  are learned per route and shared by every flights addon through the
+  `ConsecratedHammerFlights` global, with LibTaxiData's leg lengths as the
+  first estimate. Diagnostics gain a Flights section, and Troubleshooting a
+  Flight times section with a **Get LibTaxiData** link.
+- `check.py` fails a flights addon that doesn't declare LibTaxiData, as
+  required or optional, in its TOCs and `.pkgmeta`.
+- **Minimap menu.** Right-clicking the minimap button opens a small menu:
+  settings, Profiles, then the addon's own extras from `minimap.menu`.
+  Prefer the old way? "Minimap right-click" on Visibility switches it back
+  to opening settings.
+- **Settings search.** Lost a setting? The search box at the top of the
+  settings window finds it and takes you straight there. "Settings search"
+  on Visibility hides it.
+- **Welcome window.** `HC.Welcome` gives an addon a one-page setup window
+  with a banner and a row of choices per setting. New installs see every
+  row, updates only the new ones. It replaces that login's What's new popup,
+  stays out of combat, and comes with `setup`, "Setup on new features" and
+  **Run setup again**.
+- Flights picked from NPC chat (no flight map, so no `TakeTaxiNode`) are
+  caught: control loss starts a 10-second watch for taxi state, and once the
+  world has loaded a light check every 2 seconds catches anything else. They
+  take off with no route or estimate, and a reload mid-flight still resumes
+  rather than counting as a new takeoff. Diagnostics show the taxi state.
+- Addons can watch takeoff and landing without LibTaxiData
+  (`flights = { estimates = false }`).
+- `tools/release_check.py` runs every release check and prints one PASS or
+  FAIL. `tools/status.py` reports what's parked across every addon and can
+  write the wiki's Addon status page.
+- Diagnostics show the minimap right-click mode and the welcome state.
+- Question IDs are now permanent: `data/quiz/ids.txt` lists every shipped
+  ID, `generate_quiz.py --check` fails if one goes missing, and
+  `"retired": true` drops a question while keeping its ID reserved.
+
+### Changed
+
+- Settings search now sits beside the page's preview button above the tabs.
+  The description keeps clear of both controls, and hiding search gives its
+  space back.
+- `check.py` ignores Lua comments when looking for `flights`, and doesn't
+  ask for LibTaxiData when estimates are off.
+
 ## [0.3.2] - 2026-11-10
 
 ### Changed

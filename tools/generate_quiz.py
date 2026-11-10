@@ -10,6 +10,10 @@ import sys
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+LEDGER = ROOT / 'data/quiz/ids.txt'
+LEDGER_HEADER = ('# Every question ID that has shipped. Never remove or reuse a line: Loreforge\n'
+                 '# picks the daily question from these IDs, so they must stay stable. Retire a\n'
+                 '# bad question with "retired": true instead of deleting it.\n')
 CATEGORIES = {'lore', 'geography', 'class', 'race', 'hallowsend', 'bossquotes', 'lastwords', 'murlocs', 'goblins', 'items'}
 CLASSES = set('WARRIOR PALADIN HUNTER ROGUE PRIEST DEATHKNIGHT SHAMAN MAGE WARLOCK MONK DRUID DEMONHUNTER EVOKER'.split())
 RACES = set('Human Dwarf NightElf Gnome Draenei Worgen Pandaren Orc Scourge Tauren Troll BloodElf Goblin VoidElf LightforgedDraenei DarkIronDwarf KulTiran Mechagnome Nightborne HighmountainTauren MagharOrc ZandalariTroll Vulpera Dracthyr EarthenDwarf'.split())
@@ -54,6 +58,7 @@ def validate(rows):
             assert not (same_client and same_class and same_race), f'duplicate question {key}'
         questions.setdefault(qkey, []).append(row)
         assert row['era'] in {'both', 'classic', 'retail'}, key
+        assert isinstance(row.get('retired', False), bool), f'{key}: retired must be true or false'
         assert row['difficulty'] in {'easy', 'hard'}, key
         assert row['categories'] and len(set(row['categories'])) == len(row['categories']), key
         assert set(row['categories']) <= CATEGORIES, key
@@ -76,6 +81,8 @@ def validate(rows):
 def render(rows):
     groups = collections.defaultdict(list)
     for row in rows:
+        if row.get('retired'):
+            continue
         groups[row['categories'][0]].append(row)
     files = {}
     for category in sorted(CATEGORIES):
@@ -90,6 +97,26 @@ def render(rows):
     return files
 
 
+def read_ledger(path=LEDGER):
+    if not path.exists():
+        return []
+    return [line.strip() for line in path.read_text().splitlines()
+            if line.strip() and not line.startswith('#')]
+
+
+def ledger_problems(rows, ledger):
+    """Shipped IDs that vanished, and IDs not yet recorded."""
+    ids = {row['id'] for row in rows}
+    shipped = set(ledger)
+    missing = sorted(shipped - ids)
+    new = sorted(ids - shipped)
+    return missing, new
+
+
+def write_ledger(ledger, new, path=LEDGER):
+    path.write_text(LEDGER_HEADER + ''.join(key + '\n' for key in [*ledger, *new]))
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
@@ -98,12 +125,21 @@ def main():
     for path in sorted((ROOT / 'data/quiz').glob('*.jsonl')):
         rows.extend(json.loads(line) for line in path.read_text().splitlines() if line.strip())
     validate(rows)
+    ledger = read_ledger()
+    missing, new = ledger_problems(rows, ledger)
+    assert not missing, ('shipped question IDs are missing (retire them with "retired": true '
+                         'instead of deleting or renaming): ' + ', '.join(missing))
+    if args.check:
+        assert not new, 'question IDs not in data/quiz/ids.txt (run tools/generate_quiz.py): ' + ', '.join(new)
+    elif new or not LEDGER.exists():
+        write_ledger(ledger, new)
     for path, text in render(rows).items():
         if args.check:
             assert path.exists() and path.read_text() == text, f'stale generated file {path}'
         else:
             path.write_text(text)
-    print(f'{len(rows)} total questions validated')
+    retired = sum(1 for row in rows if row.get('retired'))
+    print(f'{len(rows)} total questions validated ({retired} retired)')
     print('Client tags:', dict(collections.Counter(row['era'] for row in rows)))
     print('Difficulty:', dict(collections.Counter(row['difficulty'] for row in rows)))
     print('Categories:', dict(collections.Counter(tag for row in rows for tag in row['categories'])))
