@@ -262,7 +262,8 @@ function Settings:OpenLink(link)
 end
 
 -- The addon's own CurseForge page (## X-CurseForge in its TOC) leads, so
--- players can rate it or check for updates; then the shared links.
+-- players can rate it or check for updates; then its GitHub source
+-- (## X-Website); then the shared links.
 function Settings:Links()
     local links = HC.spec.links
     if links == false then return {} end
@@ -272,6 +273,12 @@ function Settings:Links()
     if type(page) == "string" and page:find("^https://") then
         list[1] = { label = "CurseForge", url = page, icon = "CurseForge.tga",
             hint = HC.name .. "'s page: updates, comments and other addons." }
+    end
+    -- Then its source on GitHub (## X-Website in its TOC, when it's GitHub).
+    local source = HC.GetMetadata("X-Website")
+    if type(source) == "string" and source:find("^https://github%.com/") then
+        list[#list + 1] = { label = "GitHub", url = source, icon = "GitHub.tga",
+            hint = HC.name .. "'s source code and changes." }
     end
     for _, link in ipairs(self.LINKS) do list[#list + 1] = link end
     return list

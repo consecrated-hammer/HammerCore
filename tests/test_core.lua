@@ -625,7 +625,7 @@ do
         whatsNew = { { version = "1.2.3", items = { { text = "First addon news.", page = "General" } } } } })
     B:Init({ name = "OtherAddon", command = "other", icon = "b", minimap = { icon = "b-small" },
         db = function() return dbB end,
-        whatsNew = { { version = "9.9.9", items = { { text = "Second addon news.", page = "Extras" } } } } })
+        whatsNew = { { version = "9.9.9", items = { { text = "Second addon news.", page = "Extras", tab = "Cells" } } } } })
     A.Settings:NewPage({ name = "General", title = "General" }, function(_, y) return y end)
     B.Settings:NewPage({ name = "Extras", title = "Extras" }, function(_, y) return y end)
     A:Start()
@@ -653,10 +653,11 @@ do
     equal(headingIcons["a"], 1, "or its own icon without one")
     equal(dbA.hammerCore.whatsNewSeen, "1.2.3", "the first addon records what it saw")
     equal(dbB.hammerCore.whatsNewSeen, "9.9.9", "the second addon records what it saw")
-    local opened
-    B.Settings.Show = function(_, page) opened = page end
+    local opened, openedTab
+    B.Settings.Show = function(_, page, tab) opened, openedTab = page, tab end
     wow.Click(wow.FindButton("Open Extras"))
     equal(opened, "Extras", "a button opens its own addon's page")
+    equal(openedTab, "Cells", "on the item's tab")
 
     -- Each addon's command still shows only its own news.
     A.WhatsNew:Hide()
@@ -735,6 +736,24 @@ do
     catcher.prompt.scripts.OnMouseWheel(catcher.prompt, 1)
     equal(clicks[2], "MOUSEWHEELUP", "and so does the wheel over it")
     Capture:Stop()
+end
+
+-- ── Footer links: CurseForge, then GitHub from the TOC ─────────────────────
+do
+    local HC = addon()
+    local labels = function()
+        local out = {}
+        for _, link in ipairs(HC.Settings:Links()) do out[#out + 1] = link.label end
+        return table.concat(out, ",")
+    end
+    equal(labels(), "Discord,Buy me a coffee", "no TOC pages, shared links only")
+    META.TestAddon["X-CurseForge"] = "https://www.curseforge.com/wow/addons/test"
+    META.TestAddon["X-Website"] = "https://github.com/consecrated-hammer/Test"
+    equal(labels(), "CurseForge,GitHub,Discord,Buy me a coffee", "CurseForge then GitHub lead")
+    equal(HC.Settings:Links()[2].icon, "GitHub.tga", "GitHub has its icon")
+    META.TestAddon["X-Website"] = "https://example.com"
+    equal(labels(), "CurseForge,Discord,Buy me a coffee", "only a GitHub website becomes a GitHub link")
+    META.TestAddon["X-CurseForge"], META.TestAddon["X-Website"] = nil, nil
 end
 
 io.write("hammercore what's new tests passed\n")

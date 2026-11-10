@@ -409,7 +409,7 @@ local function releaseCard(panel, release, newest, relayout)
     rule:SetHeight(1)
     local bottom = W.DrawItems(body, 16, -14, width - 32, release, {
         pageTitle = W.PageTitle,
-        openPage = function(page) HC.Settings:Show(page) end,
+        openPage = function(page, tab) HC.Settings:Show(page, tab) end,
     })
     local bodyHeight = -bottom + 6
     body:SetHeight(bodyHeight)

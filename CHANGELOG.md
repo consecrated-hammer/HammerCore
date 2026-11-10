@@ -5,6 +5,15 @@ All notable changes to HammerCore are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-11-11
+
+### Added
+
+- **GitHub link in the settings footer.** Next to CurseForge, for addons
+  whose TOC `## X-Website` points at GitHub, with a new `GitHub.tga` icon.
+- **What's new links can open a tab.** An item with `tab = "Cells"` next to
+  its `page` opens that settings page on that tab.
+
 ## [0.5.0] - 2026-11-10
 
 HammerCore 0.5.0, which includes the unreleased 0.4.0 work.
