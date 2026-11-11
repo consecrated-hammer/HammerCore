@@ -15,6 +15,8 @@ assert normalise("[x](<https://a b>)") == normalise("[x](https://a%20b)")
 assert normalise("_hi_") == normalise("*hi*")
 assert normalise("**bold**") == normalise("**bold**")
 assert normalise("1. first") == normalise("1) first")
+assert normalise("**a**<br>_b_") == normalise("**a**  \n_b_")
+assert normalise("**a**<br>_b_") != normalise("**a**\n\n_b_")
 # Real changes still count.
 assert normalise("banner 2113/775") != normalise("banner 2182/151")
 assert normalise("**bold**") != normalise("_bold_")

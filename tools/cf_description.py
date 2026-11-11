@@ -49,8 +49,14 @@ def normalise(text: str) -> str:
     text = urllib.parse.unquote(text)
     text = re.sub(r"(?m)^\s*[*+-]\s+", "- ", text)
     text = re.sub(r"(?m)^\s*(\d+)[.)]\s+", r"\1. ", text)
+    # Keep paragraph breaks and hard line breaks (<br>, or the two trailing
+    # spaces CurseForge stores it as) distinct; plain newlines are reflow.
+    text = re.sub(r"<br\s*/?>", "\u21b5", text, flags=re.I)
+    text = re.sub(r" {2,}\n", "\u21b5", text)
+    text = re.sub(r"\n[ \t]*\n\s*", "\u00b6", text)
     text = re.sub(r"(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)", r"_\1_", text)
     text = text.replace("\\", "")
+    text = re.sub(r"\s*([\u21b5\u00b6])\s*", r"\1", text)
     return re.sub(r"\s+", " ", text).strip()
 
 
