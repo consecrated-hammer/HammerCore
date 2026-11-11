@@ -21,6 +21,7 @@ The project ID comes from the addon's TOC (X-Curse-Project-ID).
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -57,6 +58,25 @@ def first_difference(live: str, wanted: str) -> str:
     a, b = normalise(live), normalise(wanted)
     i = next((n for n, (x, y) in enumerate(zip(a, b)) if x != y), min(len(a), len(b)))
     return f"live: ...{a[max(0, i - 40):i + 60]!r}\n  file: ...{b[max(0, i - 40):i + 60]!r}"
+
+
+def sent_text_matches(post_data: str | None, wanted: str) -> bool:
+    """True when the save request carries our text.
+
+    The editor sends the rendered HTML, so check that every link and image
+    URL in the Markdown made it into the body. Old text would be missing the
+    new ones.
+    """
+    try:
+        body = json.loads(post_data or "")
+    except ValueError:
+        return False
+    html = body.get("description") if isinstance(body, dict) else None
+    if not isinstance(html, str):
+        return False
+    html = html.replace("&amp;", "&")
+    urls = re.findall(r"\]\(<?(https?://[^)\s>]+)>?\)", wanted)
+    return bool(urls) and all(url in html for url in urls)
 
 
 # ── Inside the runner container ─────────────────────────────────────────────
@@ -125,15 +145,23 @@ def publish(page, name: str, pid: str, wanted: str, save: bool, timeout_error) -
     if not response.ok:
         page.screenshot(path=f"/out/{name}-save-error.png", full_page=True)
         return f"FAIL: save returned HTTP {response.status}"
+    if not sent_text_matches(response.request.post_data, wanted):
+        return "FAIL: the save request didn't carry the new text (clicked too early?)"
 
-    # The editor is a single-page app: going to the same URL is only a hash
-    # change, so reload for real before checking what CurseForge kept.
-    page.reload(wait_until="networkidle", timeout=60000)
-    editor = page.locator("textarea.mde-text")
-    editor.wait_for(state="visible", timeout=30000)
-    if normalise(editor.input_value()) != normalise(wanted):
+    # CurseForge can serve the old text for a little while after a save, so
+    # reload a few times before calling it a mismatch. The editor is a
+    # single-page app: going to the same URL is only a hash change, so
+    # reload for real.
+    for attempt in range(6):
+        page.wait_for_timeout(5000 if attempt else 1500)
+        page.reload(wait_until="networkidle", timeout=60000)
+        editor = page.locator("textarea.mde-text")
+        editor.wait_for(state="visible", timeout=30000)
+        if normalise(editor.input_value()) == normalise(wanted):
+            break
+    else:
         page.screenshot(path=f"/out/{name}-after-save.png", full_page=True)
-        return f"FAIL: saved, but the live text doesn't match the file (screenshot {name}-after-save.png)"
+        return f"FAIL: saved, but the live text still doesn't match after 30 s (screenshot {name}-after-save.png)"
     return "saved and checked"
 
 
