@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """End-to-end check of the scaffold, vendoring, drift check and staging.
 
-Needs a committed HammerCore checkout (sync pins HEAD) and a Lua 5.1
-interpreter on PATH as `lua5.1` or `lua`.
+Needs a committed HammerCore checkout (sync pins HEAD). Uses Lua 5.1 from
+PATH or the Docker runtime used by release_check.py.
 """
 
 from __future__ import annotations
@@ -15,6 +15,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / "tools"
+sys.path.insert(0, str(TOOLS))
+from release_check import lua_command
 
 
 def run(*args: str, cwd: Path | None = None, expect: int = 0) -> str:
@@ -27,7 +29,7 @@ def run(*args: str, cwd: Path | None = None, expect: int = 0) -> str:
 
 def main() -> int:
     lua = shutil.which("lua5.1") or shutil.which("lua")
-    assert lua, "a Lua 5.1 interpreter is required"
+    assert lua or shutil.which("docker"), "Lua 5.1 or Docker is required"
     with tempfile.TemporaryDirectory() as temp:
         temp = Path(temp)
         addon = temp / "Anvilwise"
@@ -43,7 +45,7 @@ def main() -> int:
         assert "Anvilwise.toc Anvilwise_Camelot.toc" in release, "release workflow names both TOCs"
         assert "{{" not in (addon / "Core.lua").read_text(), "placeholders are filled"
 
-        print(run(lua, "tests/test_anvilwise.lua", cwd=addon).strip())
+        print(run(*lua_command(addon, "tests/test_anvilwise.lua", lua), cwd=addon).strip())
         run(sys.executable, str(TOOLS / "toc_check.py"), str(addon))
         run(sys.executable, str(TOOLS / "check.py"), str(addon))
 

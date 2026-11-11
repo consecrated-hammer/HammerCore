@@ -1,14 +1,14 @@
 # HammerCore
 
 The shared foundation for Consecrated Hammer's World of Warcraft addons:
-Salve, CheckMark, Speedster, HammerLink and Buffsmith. It gives each addon
+Salve, CheckMark, Speedster, HammerLink, Buffsmith and Loreforge. It gives each addon
 the same settings window, theme, commands, chat style, startup message,
 minimap button and reference pages, so they feel like one family.
 
 HammerCore is **not** an addon and is **not** installed by players. Each
 addon vendors a pinned copy under `Libs/HammerCore/` and loads it into its
 own private namespace, with no LibStub and only one small global, for the
-shared What's new window. Five addons can each run a different HammerCore
+shared What's new window. Six addons can each run a different HammerCore
 version without affecting one another.
 
 ## Starting a new addon
@@ -344,6 +344,15 @@ Classic. Everything else follows from the colour roles.
 | `tools/new_addon.py <Name>` | Scaffold a new addon |
 | `tools/release_check.py <addon> --version X` | Run every release check (TOCs, TOC version, What's new, vendored HammerCore, Lua and Python tests, CHANGELOG heading, clean tree) and print one PASS or FAIL. `--allow-dirty` warns instead, `--skip-tests` skips tests, `--lua PATH` uses a local Lua instead of Docker |
 | `tools/status.py` | Show what's parked in every addon repo: uncommitted files, unpushed commits, vendored HammerCore, staged dev builds, `[Unreleased]` notes and CurseForge descriptions waiting to be pasted. `--write` updates the wiki's Addon status page |
+| `tools/cf_description.py <Addon>` | Compare each live CurseForge description with its wiki file and fill the editor when they differ, with a screenshot. `--all` does every addon; `--save` saves and checks the result. Drives the `cf-browser` container's logged-in Chromium (see `/mnt/docker/infra/docs/cf-browser.md`) |
+
+On BatServer, staging a canonical addon checkout into the client folders
+refreshes the AKW code index once with CUDA. A refresh failure prints a warning
+after the build has been staged. Scratch output directories skip the refresh.
+
+Run `python3 tests/test_tools.py` for the scaffold and staging checks. The
+suite uses Lua 5.1 on PATH when available and otherwise uses the same Docker
+runtime as the release checker.
 
 Never edit an addon's `Libs/HammerCore` directly. Change HammerCore, test,
 commit, then run `sync.py`. Addon CI runs `check.py`.

@@ -16,6 +16,8 @@ import argparse
 import os
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -23,6 +25,7 @@ CLIENTS = {
     "retail": (Path("/mnt/backup/syncthing/kevin/wow-interface/AddOns"), "{name}.toc"),
     "forever": (Path("/mnt/backup/syncthing/kevin/wow-forever-interface/AddOns"), "{name}_Camelot.toc"),
 }
+ADDON_SOURCES = Path("/mnt/docker/apps/wow-addons")
 RUNTIME_SUFFIXES = {".lua", ".xml", ".tga", ".blp", ".ogg", ".mp3", ".wav", ".ttf"}
 EXCLUDED_PARTS = {".git", ".github", ".scratch", "tests", "tools", "docs", "data", "media", "__pycache__"}
 
@@ -102,6 +105,24 @@ def stage(source: Path, name: str, output: Path, toc_name: str, version: str) ->
             shutil.rmtree(stage_root)
 
 
+def refresh_search_index(source: Path) -> None:
+    if source.parent != ADDON_SOURCES:
+        return
+    command = Path.home() / ".local/bin/akw-search-poc"
+    try:
+        subprocess.run(
+            [str(command), "code", "sync"],
+            env={**os.environ, "AKW_FASTEMBED_PROVIDER": "cuda"},
+            stdout=subprocess.DEVNULL,
+            timeout=300,
+            check=True,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        print(f"Staged successfully. Code search refresh failed ({exc}).", file=sys.stderr)
+    else:
+        print("Code search index refreshed with CUDA.")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("addon", type=Path)
@@ -123,14 +144,19 @@ def main() -> int:
         clients = [args.client]
     roots = [args.output] if args.output else [CLIENTS[c][0] for c in ("retail", "forever")]
     version = dev_version(source / CLIENTS[clients[0]][1].format(name=name), name, roots)
+    staged_to_client = False
     for client in clients:
         folder, toc = CLIENTS[client]
         # Never create a client folder: a missing one means the Syncthing
         # share is not mounted, and staging would write into the bare mount point.
         if not args.output and not folder.is_dir():
             raise SystemExit(f"{folder} is missing; is the Syncthing share mounted?")
-        stage(source, name, args.output or folder, toc.format(name=name), version)
-        print(f"Staged {name} {version} for {client} at {(args.output or folder) / name}")
+        output = args.output or folder
+        stage(source, name, output, toc.format(name=name), version)
+        staged_to_client |= output.resolve() == folder.resolve()
+        print(f"Staged {name} {version} for {client} at {output / name}", flush=True)
+    if staged_to_client:
+        refresh_search_index(source)
     if args.discord:
         if args.output:
             raise SystemExit("--discord posts the client-folder build; drop --output")
