@@ -17,6 +17,8 @@ assert normalise("**bold**") == normalise("**bold**")
 assert normalise("1. first") == normalise("1) first")
 assert normalise("**a**<br>_b_") == normalise("**a**  \n_b_")
 assert normalise("**a**<br>_b_") != normalise("**a**\n\n_b_")
+# Emphasis never spans a paragraph or line break.
+assert normalise("a *b\n\nc* d") != normalise("a _b\n\nc_ d")
 # Real changes still count.
 assert normalise("banner 2113/775") != normalise("banner 2182/151")
 assert normalise("**bold**") != normalise("_bold_")

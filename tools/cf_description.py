@@ -54,7 +54,7 @@ def normalise(text: str) -> str:
     text = re.sub(r"<br\s*/?>", "\u21b5", text, flags=re.I)
     text = re.sub(r" {2,}\n", "\u21b5", text)
     text = re.sub(r"\n[ \t]*\n\s*", "\u00b6", text)
-    text = re.sub(r"(?<!\*)\*(?!\*)([^*\n]+?)(?<!\*)\*(?!\*)", r"_\1_", text)
+    text = re.sub(r"(?<!\*)\*(?!\*)([^*\n\u00b6\u21b5]+?)(?<!\*)\*(?!\*)", r"_\1_", text)
     text = text.replace("\\", "")
     text = re.sub(r"\s*([\u21b5\u00b6])\s*", r"\1", text)
     return re.sub(r"\s+", " ", text).strip()
