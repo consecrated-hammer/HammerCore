@@ -191,6 +191,14 @@ calls `replace()`), `unbind(id)`, and optionally `clearAll`, `inputs`
 its own, and `HC.Bindings.Label(key)` turns `SHIFT-BUTTON4` into
 "Shift+Mouse 4".
 
+Items can carry their own `inputs`, overriding the page's.
+`HC.Bindings.BindCommand(command, key, replace?)` binds a game key to a
+command from the addon's `Bindings.xml` and saves it. It returns `true`, or
+`false, message` plus `"conflict"` when the key belongs to something else
+and passing `replace` would take it. `ClearCommand(command)`,
+`CommandKey(command)` and `CommandLabel(command)` round it out. All refuse
+in combat.
+
 `HC.Dialog:Confirm(spec)` and `HC.Dialog:Prompt(spec)` are themed yes/no
 and one-line text dialogs. They're plain frames rather than StaticPopups,
 work in combat, and close with Escape (which counts as cancel). A prompt's

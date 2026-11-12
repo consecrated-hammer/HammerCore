@@ -5,6 +5,23 @@ All notable changes to HammerCore are recorded here.
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+HammerCore 0.5.2.
+
+### Added
+
+- **Game key bindings for addon commands.** `HC.Bindings.BindCommand`,
+  `ClearCommand`, `CommandKey` and `CommandLabel` bind a key to a command
+  from the addon's `Bindings.xml` (usually a `CLICK` on a secure button).
+  They refuse in combat, report a key that already belongs to something
+  else so the page can offer **Replace**, release the command's old key,
+  refuse a bare left or right click, and save to the binding set in use.
+  Speedster, Buffsmith and Loreforge each do this by hand today; they can
+  move over as they're next touched.
+- A Key Bindings page item can carry its own `inputs`, so one page can mix
+  mouse-only spell tiles with key-bindable ones.
+
 ## [0.5.1] - 2026-11-11
 
 ### Added

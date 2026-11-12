@@ -738,6 +738,48 @@ do
     Capture:Stop()
 end
 
+-- Game key bindings for an addon command.
+do
+    local HC = addon()
+    local B = HC.Bindings
+    local map, saved, locked = { F = "TOGGLEMAP" }, 0, false
+    local function keysFor(command)
+        local out = {}
+        for key, action in pairs(map) do if action == command then out[#out + 1] = key end end
+        table.sort(out)
+        return unpack(out)
+    end
+    local previous = { GetBindingKey, GetBindingAction, SetBinding, SaveBindings, GetBindingName, InCombatLockdown }
+    GetBindingKey = keysFor
+    GetBindingAction = function(key) return map[key] or "" end
+    SetBinding = function(key, command) map[key] = command; return true end
+    SaveBindings = function() saved = saved + 1 end
+    GetBindingName = function(action) return action == "TOGGLEMAP" and "Open map" or action end
+    InCombatLockdown = function() return locked end
+    local cmd = "CLICK TestButton:LeftButton"
+
+    equal(B.CommandLabel(cmd), "Not bound", "nothing bound yet")
+    equal(B.BindCommand(cmd, "G"), true, "a free key binds")
+    equal(B.CommandKey(cmd), "G", "and reads back")
+    equal(saved, 1, "and is saved")
+    local ok, message, conflict = B.BindCommand(cmd, "F")
+    equal(ok, false, "a taken key is refused")
+    equal(conflict, "conflict", "as a conflict")
+    equal(message:find("Open map", 1, true) ~= nil, true, "naming what has it")
+    equal(B.BindCommand(cmd, "F", true), true, "replace takes it")
+    equal(map.G, nil, "the old key is released")
+    equal(B.CommandKey(cmd), "F", "one key at a time")
+    equal(B.BindCommand(cmd, "BUTTON1"), false, "bare left click is refused")
+    equal(B.BindCommand(cmd, "SHIFT-BUTTON1"), true, "with a modifier it's fine")
+    locked = true
+    equal(B.BindCommand(cmd, "H"), false, "no changes in combat")
+    equal(B.ClearCommand(cmd), false, "including clearing")
+    locked = false
+    equal(B.ClearCommand(cmd), true, "clears out of combat")
+    equal(B.CommandKey(cmd), nil, "nothing left")
+    GetBindingKey, GetBindingAction, SetBinding, SaveBindings, GetBindingName, InCombatLockdown = unpack(previous)
+end
+
 -- ── Footer links: CurseForge, then GitHub from the TOC ─────────────────────
 do
     local HC = addon()
