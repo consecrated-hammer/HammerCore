@@ -7,6 +7,8 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Standard action buttons and the binding editor join settings search. The test harness clears the shared welcome queue between simulated client sessions.
+
 HammerCore 0.5.2.
 
 ### Added
@@ -21,6 +23,15 @@ HammerCore 0.5.2.
   move over as they're next touched.
 - A Key Bindings page item can carry its own `inputs`, so one page can mix
   mouse-only spell tiles with key-bindable ones.
+
+### Changed
+
+- Settings search includes tab names on multi-tab pages. Gated sections can
+  name their enabling row with `hcParentRow`, keeping dependent settings
+  searchable and focusing the visible parent while they are hidden.
+- Visibility groups shared controls under Minimap button, Updates and
+  Settings window. Pages can hide the profile tag with `profileScope = false`
+  or a function of the selected tab.
 
 ## [0.5.1] - 2026-11-11
 

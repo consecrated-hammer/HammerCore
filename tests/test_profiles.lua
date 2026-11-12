@@ -328,6 +328,10 @@ do
     local HC, P = addon()
     P:NewPage({})
     HC.Settings:NewPage({ name = "Layout" }, function(_, y) return y end)
+    HC.Settings:NewPage({ name = "Shared", profileScope = false }, function(_, y) return y end)
+    HC.Settings:NewPage({ name = "Mixed", profileScope = function(tab) return tab == "Per profile" end,
+        tabs = { { name = "Shared", build = function(_, y) return y end },
+            { name = "Per profile", build = function(_, y) return y end } } })
     local tag = function() return HC.Settings.profileTag end
     assert(HC.Settings:Show("Layout"), "settings open")
     equal(tag().Text:GetText(), "Profile: Party", "the tag names the active profile")
@@ -338,6 +342,12 @@ do
     tag().scripts.OnClick(tag())
     equal(HC.Settings.selected, "Profiles", "the tag opens Profiles")
     equal(tag():IsShown(), false, "the Profiles page needs no tag")
+    HC.Settings:Show("Shared")
+    equal(tag():IsShown(), false, "a shared settings page needs no tag")
+    HC.Settings:Show("Mixed", "Shared")
+    equal(tag():IsShown(), false, "a shared tab needs no tag")
+    HC.Settings:Select("Mixed", "Per profile")
+    equal(tag():IsShown(), true, "a profiled tab shows the tag")
 end
 
 -- Reload UI stays hidden until something needs it.
@@ -375,4 +385,33 @@ do
     equal(row.hcPulse:IsShown(), false, "the pulse fades out")
     assert(HC.Settings:Focus("Display", "Show handle"), "a switch row can be focused too")
     equal(HC.Settings:Focus("Display", "Nope"), nil, "an unknown setting finds nothing")
+end
+
+-- Ask-first controls stay searchable while their section is gated by Mode.
+do
+    local HC, P = addon()
+    P:NewPage({})
+    HC:Start()
+    HC.Settings:Show("Profiles", "Auto-switch")
+    local body = HC.Settings.pages.Profiles.bodies["Auto-switch"]
+    local mode = assert(body.hcRows.Mode)
+    for _, label in ipairs({ "After declining", "In combat" }) do
+        local matches = HC.Settings:Search(label, 100)
+        local match
+        for _, candidate in ipairs(matches) do
+            if candidate.page == "Profiles" and candidate.label == label then match = candidate end
+        end
+        assert(match, label .. " is indexed while auto-switch is off")
+        equal(HC.Settings:Focus("Profiles", label, "Auto-switch"), mode, label .. " focuses Mode while off")
+    end
+    P.Auto:SetMode("AUTO")
+    P.RefreshSettings()
+    equal(HC.Settings:Focus("Profiles", "After declining", "Auto-switch"), mode,
+        "automatic mode still routes ask-first settings to Mode")
+    P.Auto:SetMode("ASK")
+    P.RefreshSettings()
+    equal(HC.Settings:Focus("Profiles", "After declining", "Auto-switch"), body.hcRows["After declining"],
+        "ask mode focuses the visible child")
+    equal(HC.Settings:Focus("Profiles", "In combat", "Auto-switch"), body.hcRows["In combat"],
+        "ask mode focuses the other visible child")
 end

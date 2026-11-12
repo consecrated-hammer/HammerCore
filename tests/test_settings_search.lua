@@ -56,7 +56,7 @@ do
     HC.Settings:Show()
     equal(texts(HC.Settings:Search("icon scale")), "General" .. ARROW .. "Icon scale", "a label")
     equal(texts(HC.Settings:Search("chime")), "General" .. ARROW .. "Play sound", "tooltip text")
-    equal(texts(HC.Settings:Search("COOLDOWN bar")), "Display" .. ARROW .. "Bar colour",
+    equal(texts(HC.Settings:Search("COOLDOWN bar")), "Display" .. ARROW .. "Bars" .. ARROW .. "Bar colour",
         "colour codes are stripped and case ignored")
     local desaturate
     for _, match in ipairs(HC.Settings:Search("icons")) do
@@ -86,7 +86,7 @@ do
     equal(results:IsShown(), true, "typing opens the results")
     equal(box.placeholder:IsShown(), false, "the placeholder hides while typing")
     local first = results.rows[1]
-    equal(first.label.text, "Display" .. ARROW .. "Desaturate", "the result reads Page > Label")
+    equal(first.label.text, "Display" .. ARROW .. "Icons" .. ARROW .. "Desaturate", "the result reads Page > Tab > Label")
     local focused
     local focus = HC.Settings.Focus
     HC.Settings.Focus = function(self, page, setting, tab)
@@ -168,6 +168,65 @@ do
     settings:RefreshSearch()
     equal(action.points[1][2], box, "turning search on restores the shared row")
     equal(settings.pageDescription:GetWidth(), both, "the original space reservation returns")
+end
+
+-- Hidden dependent sections stay searchable and focus their visible switch.
+do
+    local HC = addon()
+    local parent, group, nestedParent, nested
+    HC.Settings:NewPage({ name = "Dependent" }, function(panel, y)
+        parent, y = HC.UI.Check(panel, "Role icons", nil, y, function() return false end, function() end)
+        group = CreateFrame("Frame", nil, panel)
+        group.hcHeaderOwner, group.hcParentRow = panel.hcHeaderOwner, parent
+        group:Hide()
+        nestedParent = HC.UI.Check(group, "Role details", nil, 0, function() return false end, function() end)
+        nested = CreateFrame("Frame", nil, group)
+        nested.hcHeaderOwner, nested.hcParentRow = panel.hcHeaderOwner, nestedParent
+        nested:Hide()
+        HC.UI.Slider(nested, "Role icon size", nil, 0, 8, 32, 1, function() return 12 end, function() end)
+        local orphan = CreateFrame("Frame", nil, panel)
+        orphan.hcHeaderOwner = panel.hcHeaderOwner
+        orphan:Hide()
+        HC.UI.Check(orphan, "Unavailable detail", nil, 0, function() return false end, function() end)
+        return y
+    end)
+    HC.Settings:Show("General")
+    equal(#HC.Settings:Search("role icon size"), 1, "hidden nested setting is indexed")
+    equal(#HC.Settings:Search("unavailable detail"), 0, "hidden section without a parent is excluded")
+    equal(HC.Settings:Focus("Dependent", "Role icon size"), parent, "hidden nested setting focuses visible ancestor")
+    equal(HC.Settings.pulser.row, parent, "visible parent pulses")
+    group:Show()
+    equal(HC.Settings:Focus("Dependent", "Role icon size"), nestedParent, "nearest visible parent is preferred")
+    nested:Show()
+    local row = HC.Settings.pages.Dependent.bodies.Dependent.hcRows["Role icon size"]
+    equal(HC.Settings:Focus("Dependent", "Role icon size"), row, "visible setting focuses itself")
+    row:Hide()
+    equal(#HC.Settings:Search("role icon size"), 0, "directly hidden row without a parent remains excluded")
+    row.hcParentRow = parent
+    equal(HC.Settings:Focus("Dependent", "Role icon size"), parent, "directly gated row can name its parent")
+    row.hcParentRow = row
+    equal(HC.Settings:Focus("Dependent", "Role icon size"), nil, "invalid parent cycle is safely excluded")
+end
+
+-- Action buttons and the custom bindings editor participate in search too.
+do
+    local HC = addon()
+    HC.Settings:NewPage({ name = "Bindings" }, function(panel, y)
+        _, y = HC.UI.ActionButton(panel, y, "Reset test position", function() end, "Restore placement.")
+        return HC.Bindings.Page(panel, y, {
+            poolTitle = "Your spells", poolHint = "Mouseover dispel and both dispels.",
+            bound = function() return {} end, pool = function() return {} end,
+            unbind = function() end, bind = function() return true end, clearAll = function() end,
+        })
+    end)
+    HC.Settings:Show("Bindings")
+    assert(not HC.Settings.errors.Bindings, "bindings search fixture builds")
+    equal(#HC.Settings:Search("reset test position"), 1, "action buttons register automatically")
+    equal(#HC.Settings:Search("mouseover dispel"), 1, "binding pool hints are indexed")
+    equal(#HC.Settings:Search("clear all bindings"), 1, "empty binding list still explains clear all")
+    local body = HC.Settings.pages.Bindings.bodies.Bindings
+    equal(HC.Settings:Focus("Bindings", "Clear all bindings"), body.hcRows["Active bindings"],
+        "hidden clear action focuses the binding list")
 end
 
 io.write("test_settings_search: ok\n")

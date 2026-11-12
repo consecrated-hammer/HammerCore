@@ -250,7 +250,7 @@ do
     HC.spec.visibility = function(panel, y) return select(2, HC.UI.Header(panel, "Bar", y)) end
     HC:Start()
     HC.Settings:Show("Visibility")
-    equal(headings[1] .. "," .. headings[2], "Bar,Other", "addon sections come first, Other last")
+    equal(table.concat({ headings[1], headings[2], headings[3], headings[4] }, ","), "Bar,Minimap button,Updates,Settings window", "addon sections precede shared groups")
     HC.UI.Header = header
 
     HC.Settings:Show("About")

@@ -125,7 +125,22 @@ setting is hidden.
 **Settings search.** A search box at the bottom right of the settings header
 finds any setting by page, tab, label or tooltip and jumps to it with
 `Settings:Focus`. `HC.Settings:Search(query)` returns `{ page, tab, label,
-text }` matches. "Settings search" on Visibility hides it.
+text }` matches, with the tab name in the displayed result on multi-tab pages.
+A section hidden by a parent setting can set `section.hcParentRow` to that
+setting's row frame. Its indexed children remain searchable; focusing one
+pulses the nearest visible parent setting. Sections must forward
+`hcHeaderOwner` from their parent so their rows join the page index.
+Every new setting must register through `UI.Row` (including the standard
+controls) or `UI.RegisterRow(parent, row, label)` for custom controls. Labels
+must be unique within each page body or tab, since the index uses labels as
+keys. Add relevant synonyms to the row hint so players can search using
+familiar terms. Test that new labels and key synonyms return the intended
+control, and that gated children focus their visible parent.
+"Settings search" on Visibility hides it.
+
+**Profile scope.** Main pages show the active profile by default. A page can
+set `spec.profileScope = false` for shared settings, or provide a function of
+the selected tab returning false when that tab has no per-profile settings.
 
 **Welcome window.** `HC.Welcome:Register(spec)` before `HC:Start` gives the
 addon a small setup window: a banner, a tagline, a short intro, then one row
