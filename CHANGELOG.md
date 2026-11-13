@@ -7,6 +7,9 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Let preview windows snap to settings edges when dragged nearby and detach when dragged away.
+- Make profile glyphs larger and reserve space before setting labels.
+- Allow paired controls on the shared Profiles tabs without shrinking the manager or rule editor.
 - Ask before resetting a settings page, naming the settings being reset.
 - Mark profile-owned settings with a small profile glyph and one page legend.
 - Keep one tooltip handler when a shared control is indexed again.

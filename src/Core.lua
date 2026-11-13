@@ -32,6 +32,7 @@ local DEFAULTS = {
     minimapRightClick = "menu",
     -- The search box in the settings header.
     settingsSearch = true,
+    previewSnap = true,
 }
 
 function HC.GetMetadata(key)

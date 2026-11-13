@@ -397,6 +397,8 @@ end
 -- Rows remember their label on the page body, so a link elsewhere can jump
 -- to one (HC.Settings:Focus).
 local PROFILE_GLYPH = "Interface\\FriendsFrame\\UI-Toast-ChatInviteIcon"
+UI.PROFILE_GLYPH_SIZE = 16
+UI.PROFILE_INSET = 24
 
 -- Scope applies to subsequently built rows and is inherited by child sections.
 -- Shared is the default; scope describes storage, never changes it.
@@ -419,7 +421,7 @@ end
 function UI.ScopeLegend(panel, y)
     local owner = panel.hcHeaderOwner or panel
     if owner.hcScopeLegend then return owner.hcScopeLegend, y end
-    local text, nextY = UI.Text(panel, "|T" .. PROFILE_GLYPH .. ":12:12|t Profile icon: saved in this profile. Other settings are shared.", y)
+    local text, nextY = UI.Text(panel, "|T" .. PROFILE_GLYPH .. ":16:16|t Profile icon: saved in this profile. Other settings are shared.", y)
     owner.hcScopeLegend = text
     return text, nextY
 end
@@ -430,10 +432,10 @@ function UI.RegisterRow(parent, row, label)
     row.hcSettingScope = scope
     if scope == "profile" and not row.hcScopeIcon then
         -- The switch fills its cell on a child frame. Keep this non-interactive
-        -- glyph above that child, in the gutter before the 14px label inset.
+        -- glyph above that child, with a reserved gutter before the label.
         local marker = CreateFrame("Frame", nil, row)
-        marker:SetSize(12, 12)
-        marker:SetPoint("LEFT", row, "LEFT", 0, 0)
+        marker:SetSize(UI.PROFILE_GLYPH_SIZE, UI.PROFILE_GLYPH_SIZE)
+        marker:SetPoint("LEFT", row, "LEFT", 2, 0)
         marker:SetFrameLevel((row:GetFrameLevel() or 0) + 10)
         marker:EnableMouse(false)
         local icon = marker:CreateTexture(nil, "OVERLAY")
@@ -443,6 +445,9 @@ function UI.RegisterRow(parent, row, label)
         row.hcScopeIcon = icon
     end
     if row.hcScopeIcon then row.hcScopeIcon:SetShown(scope == "profile") end
+    if type(row.Title) == "table" or type(row.Title) == "userdata" then
+        row.Title:SetPoint("LEFT", scope == "profile" and UI.PROFILE_INSET or UI.CELL_INSET, 0)
+    end
     label = resolve(label)
     if type(label) ~= "string" or label == "" then return end
     local owner = parent.hcHeaderOwner or parent
@@ -489,6 +494,10 @@ function UI.Check(panel, label, hint, y, get, set, width)
     else
         btn = UI.Switch(row)
         btn:SetAllPoints(row)
+    end
+    if row.hcSettingScope == "profile" then
+        if T.IsClassic() then btn:SetPoint("LEFT", UI.PROFILE_INSET, 0)
+        else btn.Text:SetPoint("LEFT", UI.PROFILE_INSET, 0) end
     end
     btn.Text:SetText(label)
     row.hcCheckbox = btn

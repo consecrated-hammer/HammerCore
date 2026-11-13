@@ -224,6 +224,22 @@ Rows keep their original search labels. Shared settings are unmarked by default.
 The optional scope names exactly what will reset; otherwise it comes from the
 `Reset ...` label. A profile switch cancels the pending reset.
 
+`spec.previewDock = true` adds **Snap preview to settings** on Visibility.
+Register a plain preview with `HC.Settings:PreviewDock(frame, opts)` and route
+its drag handlers to the returned controller's `BeginDrag`/`EndDrag` methods.
+Call `Restore` on show and `Refresh` after resizing. Nearby edges snap with an
+8-unit gap; dragging away detaches. Attached previews follow settings movement
+and scale, flip sides when there is room at the opposite screen edge, and keep
+their last independent position. Opening a free preview never auto-attaches it.
+`opts.getPoint`/`setPoint` preserve addon-specific free-position keys; optional
+`canDrag` and `isActive` callbacks keep combat or on-screen preview modes apart.
+The frames remain parented to UIParent and never become secure action frames.
+Each addon registers one preview controller; its dock state is private to that
+addon's HammerCore instance.
+
+`spec.profileColumns = 2` uses paired controls on the shared Profiles tabs.
+Profile-management buttons and the rule editor retain full-width rows.
+
 `HC.Dialog:Confirm(spec)` and `HC.Dialog:Prompt(spec)` are themed yes/no
 and one-line text dialogs. They're plain frames rather than StaticPopups,
 work in combat, and close with Escape (which counts as cancel). A prompt's
