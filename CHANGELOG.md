@@ -7,6 +7,7 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Show an optional addon logo beside the welcome heading.
 - Let preview windows snap to settings edges when dragged nearby and detach when dragged away.
 - Make profile glyphs larger and reserve space before setting labels.
 - Allow paired controls on the shared Profiles tabs without shrinking the manager or rule editor.

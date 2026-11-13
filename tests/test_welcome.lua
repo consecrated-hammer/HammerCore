@@ -305,4 +305,13 @@ do
     equal(HC.Welcome:Show(), false, "Show does nothing without a welcome")
 end
 
+do
+    local HC = start({ welcome = { banner = false, tagline = false, icon = "SalveLogo" } })
+    HC.Welcome:Show()
+    equal(HC.Welcome.frame.icon.texture, "SalveLogo", "plain welcome uses its addon logo")
+    equal(HC.Welcome.frame.icon:GetWidth(), 48, "welcome logo has clear size")
+    equal(HC.Welcome.frame.title:GetText(), "Welcome to TestAddon", "branded heading keeps the addon name")
+    equal(HC.Welcome.frame.intro:GetText(), "Host trivia for your party.", "branding preserves setup introduction")
+end
+
 report("welcome tests passed")
