@@ -250,8 +250,15 @@ function Capture:Start(spec)
     f.title:SetText("Bind " .. tostring(spec.title or ""))
     f.current:SetText(spec.current and ("Now: " .. spec.current) or "Not bound yet")
     local inputs = spec.inputs
-    local what = inputs.keys and (inputs.mouse and "Press a key or click a mouse button" or "Press a key")
-        or "Click a mouse button"
+    local choices = {}
+    if inputs.keys then choices[#choices + 1] = "press a key" end
+    if inputs.mouse then choices[#choices + 1] = "click a mouse button" end
+    if inputs.wheel then choices[#choices + 1] = "scroll the wheel" end
+    local what = choices[1] or "No inputs are enabled"
+    if #choices > 1 then
+        what = table.concat(choices, ", ", 1, #choices - 1) .. " or " .. choices[#choices]
+    end
+    what = what:gsub("^%l", string.upper)
     f.body:SetText(what .. "\nHold Shift, Ctrl or Alt to add them. Esc cancels.")
     f.error:SetText("")
     f.replace.action = nil

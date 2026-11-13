@@ -106,8 +106,8 @@ do
     HC.Settings:RefreshBadges()
     equal(badge.shown, false, "Mark unread What's new off hides the badge")
     HC.Settings:Show("Visibility")
-    assert(wow.FindText("Mark unread What's new"), "the badge setting is on Visibility")
-    assert(wow.FindText("Turn-in sound"), "the sound setting is on Visibility")
+    assert(wow.FindText("Show unread marker"), "the badge setting is on Visibility")
+    assert(wow.FindText("What's new sound"), "the sound setting is on Visibility")
 
     -- whatsnew reset steps back a release and brings the badge back.
     HC.State().whatsNewDot = true

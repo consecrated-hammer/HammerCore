@@ -46,14 +46,14 @@ Pages.visibility.build = function(panel, y)
             "Open a short list of new features the first time you log in after an update.", y,
             function() return HC.State().whatsNew ~= false end,
             function(value) HC.State().whatsNew = value end)
-        _, y = UI.Check(panel, "Mark unread What's new",
+        _, y = UI.Check(panel, "Show unread marker",
             "Show a yellow ! beside What's new until you've opened it since the last update.", y,
             function() return HC.State().whatsNewDot ~= false end,
             function(value)
                 HC.State().whatsNewDot = value
                 HC.Settings:RefreshBadges()
             end)
-        _, y = UI.Check(panel, "Turn-in sound",
+        _, y = UI.Check(panel, "What's new sound",
             "Play the quest turn-in sound when opening What's new clears the !.", y,
             function() return HC.State().whatsNewSound ~= false end,
             function(value) HC.State().whatsNewSound = value end)

@@ -230,8 +230,21 @@ do
     equal(pinned:GetHeight(), 120, "a pinned area is created")
     equal(pinned.hcRefresh == HC.Settings.pages.Panel.hcRefresh, true, "the pinned area shares the page refresh")
     wow.Click(resetButton)
-    equal(resetClicked, true, "the page reset runs")
+    equal(resetClicked, nil, "the page reset waits for confirmation")
+    equal(HC.Dialog.current.text, "Reset panel to defaults?", "confirmation names the reset scope")
+    wow.Click(HC.Dialog.frame.cancel)
+    equal(resetClicked, nil, "cancelling keeps settings")
+    wow.Click(resetButton)
+    wow.Click(HC.Dialog.frame.accept)
+    equal(resetClicked, true, "accepting runs the page reset")
     equal(resetButton:GetText(), "Reset panel", "the reset button is labelled")
+    local currentProfile = "First"
+    HC.Profiles.Loaded = function() return currentProfile end
+    resetClicked = false
+    wow.Click(resetButton)
+    currentProfile = "Second"
+    wow.Click(HC.Dialog.frame.accept)
+    equal(resetClicked, false, "a profile switch cancels a pending reset")
 end
 
 -- ── Visibility and About layouts ───────────────────────────────────────────
@@ -714,6 +727,7 @@ do
         end,
     })
     local catcher = Capture.frame
+    equal(catcher.prompt.body:GetText():find("wheel", 1, true), nil, "mouse-only capture does not offer the wheel")
     catcher.scripts.OnMouseDown(catcher, "RightButton")
     equal(taken, 1, "a refused click reaches onKey")
     equal(Capture:IsActive(), true, "and keeps the prompt open")
@@ -729,12 +743,17 @@ do
     local clicks = {}
     Capture:Start({ title = "Box", inputs = { mouse = true, wheel = true },
         onKey = function(key) clicks[#clicks + 1] = key end })
+    equal(catcher.prompt.body:GetText():find("scroll the wheel", 1, true) ~= nil, true, "wheel capture explains the wheel")
     catcher.prompt.scripts.OnMouseDown(catcher.prompt, "RightButton")
     equal(clicks[1], "BUTTON2", "a click on the prompt box itself binds")
     Capture:Start({ title = "Box", inputs = { mouse = true, wheel = true },
         onKey = function(key) clicks[#clicks + 1] = key end })
     catcher.prompt.scripts.OnMouseWheel(catcher.prompt, 1)
     equal(clicks[2], "MOUSEWHEELUP", "and so does the wheel over it")
+    Capture:Start({ title = "All", onKey = function() end })
+    equal(catcher.prompt.body:GetText(), "Press a key, click a mouse button or scroll the wheel\nHold Shift, Ctrl or Alt to add them. Esc cancels.", "all supported inputs are named")
+    Capture:Start({ title = "None", inputs = {}, onKey = function() end })
+    equal(catcher.prompt.body:GetText():find("No inputs are enabled", 1, true), 1, "empty input sets explain why nothing can be bound")
     Capture:Stop()
 end
 

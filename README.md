@@ -108,7 +108,7 @@ stable, since an older copy may draw a newer addon's entries.
 
 The same highlights fill a **What's new** page at the top of REFERENCE, newest
 first, each release in its own card, with a quest-style "!" on its rail button until the player opens it after an update
-(**Mark unread What's new** on Visibility). A release can add
+(**Show unread marker** on Visibility). A release can add
 `date = "2026-11-08"` and `history = true`. History entries are highlights
 written after the fact: the page lists them under Earlier releases, the popup
 never shows them, and `whatsnew_check.py` doesn't require entries for every
