@@ -85,7 +85,8 @@ eq(dock:IsAttached(), false, "re-enable after hidden disable does not autoattach
 HC.State().previewDockSide = "LEFT"; dock:Restore()
 S.window:Hide(); dock:Refresh()
 eq(select(2, preview:GetPoint()), UIParent, "hidden host leaves no stale anchor")
-eq(dock:BeginDrag(), false, "hostless drag cannot erase attachment preference")
+eq(dock:BeginDrag(), true, "independent preview can still be dragged without settings")
+eq(dock:EndDrag(), false, "hostless drop remains independent")
 eq(HC.State().previewDockSide, "LEFT", "hostless mode preserves side")
 S.window:Show(); dock:Restore()
 active = false; dock:Refresh()
@@ -96,4 +97,10 @@ local plan = S.PreviewDockPlan
 S.PreviewDockPlan = function(...) planning = planning + 1; return plan(...) end
 dock:Refresh(); dock:Refresh()
 eq(planning, 0, "idle geometry is cached before planning allocations")
+S.PreviewDockPlan = function() return nil end
+dock:BeginDrag()
+previewData.left, previewData.top = 192, 790
+eq(dock:EndDrag(), false, "unready plan is not reported as an attachment")
+eq(HC.State().previewDockSide, nil, "failed snap clears uncommitted side")
+S.PreviewDockPlan = plan
 io.write("preview docking tests passed\n")

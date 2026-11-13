@@ -161,7 +161,7 @@ function Settings:PreviewDock(frame, opts)
         self:Refresh()
     end
     function dock:BeginDrag()
-        if not active() or not host() or (opts.canDrag and not opts.canDrag()) then return false end
+        if not active() or (opts.canDrag and not opts.canDrag()) then return false end
         freeHere(false)
         self.dragging, self.attached, self.signature = true, false, nil
         frame:StartMoving()
@@ -170,16 +170,31 @@ function Settings:PreviewDock(frame, opts)
     function dock:EndDrag()
         if not self.dragging then return false end
         frame:StopMovingOrSizing()
+        if frame.SetUserPlaced then frame:SetUserPlaced(false) end
         self.dragging = false
         local state, window = HC.State(), host()
+        if not window then
+            self.attached = false
+            freeHere()
+            return false
+        end
         local side, offset
         if active() and window and state.previewSnap ~= false then side, offset = Settings.PreviewSnapSide(rect(frame), rect(window)) end
         state.previewDockSide, state.previewDockOffset = side, offset
-        if side then self:Refresh() else self.attached = false; freeHere() end
-        return side ~= nil
+        if side then self:Refresh() end
+        if not side or not self.attached then
+            state.previewDockSide, state.previewDockOffset = nil, nil
+            self.attached = false; freeHere()
+            return false
+        end
+        return true
     end
     frame:HookScript("OnHide", function()
-        if dock.dragging then frame:StopMovingOrSizing(); dock.dragging = false end
+        if dock.dragging then
+            frame:StopMovingOrSizing()
+            if frame.SetUserPlaced then frame:SetUserPlaced(false) end
+            dock.dragging = false
+        end
         if select(2, frame:GetPoint()) == Settings.window then restoreFree() end
         dock.attached, dock.signature = false, nil
     end)
