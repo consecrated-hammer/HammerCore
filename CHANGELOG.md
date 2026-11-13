@@ -8,6 +8,8 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 - Ask before resetting a settings page, naming the settings being reset.
+- Mark profile-owned settings with a small profile glyph and one page legend.
+- Keep one tooltip handler when a shared control is indexed again.
 - Explain wheel input in binding prompts and simplify the What's new visibility labels.
 - Index the shared Window scale slider and Copy report action.
 - Index dynamic Key Bindings tiles, active bindings and remove actions for settings search; remove stale entries when the lists change.

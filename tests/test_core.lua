@@ -249,6 +249,17 @@ end
 
 -- ── Visibility and About layouts ───────────────────────────────────────────
 do
+    local HC = addon()
+    local control = CreateFrame("Frame", nil, UIParent)
+    HC.UI.AttachHint(control, "First", "First hint")
+    local enter, leave = control.scripts.OnEnter, control.scripts.OnLeave
+    HC.UI.AttachHint(control, "Second", "Updated hint")
+    equal(control.scripts.OnEnter, enter, "reattaching a hint keeps one enter handler")
+    equal(control.scripts.OnLeave, leave, "reattaching a hint keeps one leave handler")
+    equal(control.hcHint, "Updated hint", "reattaching refreshes the hint text")
+end
+
+do
     local applied = 0
     local HC = addon({
         about = { note = "FROM THE FORGE", tips = { "Tip one", "Tip two" }, action = "Polish the anvil",

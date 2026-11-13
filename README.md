@@ -214,6 +214,16 @@ and passing `replace` would take it. `ClearCommand(command)`,
 `CommandKey(command)` and `CommandLabel(command)` round it out. All refuse
 in combat.
 
+`UI.SetScope(panel, "profile")` marks subsequently built settings with a small
+profile glyph, including settings in child sections. Use `"shared"` to override
+an inherited scope. Add one `UI.ScopeLegend(panel, y)` near the top of a visible
+page or tab. These helpers describe storage; they do not change profile keys.
+Rows keep their original search labels. Shared settings are unmarked by default.
+
+`UI.PageReset(panel, y, reset, label, scope)` confirms before applying a reset.
+The optional scope names exactly what will reset; otherwise it comes from the
+`Reset ...` label. A profile switch cancels the pending reset.
+
 `HC.Dialog:Confirm(spec)` and `HC.Dialog:Prompt(spec)` are themed yes/no
 and one-line text dialogs. They're plain frames rather than StaticPopups,
 work in combat, and close with Escape (which counts as cancel). A prompt's

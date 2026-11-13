@@ -52,6 +52,39 @@ end
 -- The index: labels, tooltips, tabs and pages, best match first.
 do
     local HC = addon()
+    local rows, legend, duplicate
+    HC.Settings:NewPage({ name = "Scoped" }, function(panel, y)
+        legend, y = HC.UI.ScopeLegend(panel, y)
+        local nextY
+        duplicate, nextY = HC.UI.ScopeLegend(panel, y)
+        equal(nextY, y, "one scope legend does not reserve space twice")
+        HC.UI.SetScope(panel, "profile")
+        local section = CreateFrame("Frame", nil, panel)
+        section.hcHeaderOwner = panel.hcHeaderOwner
+        local profile = HC.UI.Check(section, "Profile choice", nil, y, function() return false end, function() end)
+        HC.UI.SetScope(section, "shared")
+        local shared = HC.UI.Check(section, "Shared choice", nil, y, function() return false end, function() end)
+        HC.UI.RegisterRow(panel, shared, "Shared choice")
+        local anonymous = HC.UI.Row(panel, y, nil, nil)
+        HC.UI.RegisterRow(panel, anonymous, nil)
+        equal(anonymous.hcSettingScope, "profile", "scope marking does not depend on a search label")
+        rows = { profile, shared }
+        return y
+    end)
+    HC.Settings:Show("Scoped")
+    equal(legend, duplicate, "a body has one scope legend")
+    equal(rows[1].hcSettingScope, "profile", "profile scope is inherited")
+    equal(rows[1].hcScopeIcon:IsShown(), true, "profile rows show the glyph")
+    equal(rows[1].hcScopeMarker:GetFrameLevel() > rows[1].hcCheckbox:GetFrameLevel(), true,
+        "the profile glyph stays above the full-cell switch")
+    equal(rows[2].hcSettingScope, "shared", "a child section can override scope")
+    equal(rows[2].hcScopeIcon, nil, "shared rows stay unmarked")
+    equal(HC.Settings:Search("profile choice")[1].label, "Profile choice", "scope does not change search labels")
+    equal(HC.Settings:Focus("Scoped", "Profile choice"), rows[1], "scope does not change focus")
+end
+
+do
+    local HC = addon()
     equal(#HC.Settings:Search("sound"), 0, "nothing before the window is built")
     HC.Settings:Show()
     equal(texts(HC.Settings:Search("icon scale")), "General" .. ARROW .. "Icon scale", "a label")
