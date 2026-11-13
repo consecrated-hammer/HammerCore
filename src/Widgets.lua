@@ -397,8 +397,8 @@ end
 -- Rows remember their label on the page body, so a link elsewhere can jump
 -- to one (HC.Settings:Focus).
 local PROFILE_GLYPH = "Interface\\FriendsFrame\\UI-Toast-ChatInviteIcon"
-UI.PROFILE_GLYPH_SIZE = 16
-UI.PROFILE_INSET = 24
+UI.PROFILE_GLYPH_SIZE = 24
+UI.PROFILE_INSET = 32
 
 -- Scope applies to subsequently built rows and is inherited by child sections.
 -- Shared is the default; scope describes storage, never changes it.
@@ -421,9 +421,9 @@ end
 function UI.ScopeLegend(panel, y)
     local owner = panel.hcHeaderOwner or panel
     if owner.hcScopeLegend then return owner.hcScopeLegend, y end
-    local text, nextY = UI.Text(panel, "|T" .. PROFILE_GLYPH .. ":16:16|t Profile icon: saved in this profile. Other settings are shared.", y)
+    local text, nextY = UI.Text(panel, "|T" .. PROFILE_GLYPH .. ":24:24|t Profile icon: saved in this profile. Other settings are shared.", y)
     owner.hcScopeLegend = text
-    return text, nextY
+    return text, nextY - 8
 end
 
 function UI.RegisterRow(parent, row, label)
