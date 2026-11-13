@@ -229,6 +229,17 @@ do
         "hidden clear action focuses the binding list")
 end
 
+-- Shared custom controls used by small addons must be searchable too.
+do
+    local HC = addon()
+    HC.Settings:AddVisibility()
+    HC.Settings:Show("Visibility")
+    equal(#HC.Settings:Search("Window scale"), 1, "header scale indexed from Visibility")
+    equal(HC.Settings:Focus("Visibility", "Window scale"), HC.Settings.scaleSlider, "header slider focuses")
+    equal(#HC.Settings:Search("Copy report"), 1, "diagnostic copy action indexed")
+    assert(HC.Settings:Focus("Troubleshooting", "Copy report"), "copy report focuses")
+end
+
 -- Dynamic binding tiles, active rows and remove actions refresh their index.
 do
     local HC = addon()

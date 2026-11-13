@@ -60,6 +60,10 @@ Pages.visibility.build = function(panel, y)
     end
     if HC.Welcome and HC.Welcome.Enabled() then y = HC.Welcome:AddSettings(panel, y) end
     _, y = UI.Header(panel, "Settings window", y)
+    if HC.Settings.scaleSlider then
+        UI.RegisterRow(panel, HC.Settings.scaleSlider, "Window scale")
+        UI.AttachHint(HC.Settings.scaleSlider, "Window scale", "Resize the settings window from 70% to 130% using the header slider.")
+    end
     _, y = UI.Check(panel, "Settings search", "Show a search box at the top of this window.", y,
         function() return HC.State().settingsSearch ~= false end,
         function(value)
@@ -185,6 +189,7 @@ troubleshooting.build = function(panel, y)
     local copy = UI.Button(panel, 140, 22)
     copy:SetPoint("TOPLEFT", UI.PAD, y)
     copy:SetText("Copy report")
+    UI.RegisterRow(panel, copy, "Copy report")
     UI.AttachHint(copy, "Copy report", "Open a report you can paste into a bug report.")
     copy:SetScript("OnClick", function() HC.Commands:Dispatch("debug") end)
     y = y - 38
