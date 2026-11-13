@@ -7,6 +7,8 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Index dynamic Key Bindings tiles, active bindings and remove actions for settings search; remove stale entries when the lists change.
+
 - Standard action buttons and the binding editor join settings search. The test harness clears the shared welcome queue between simulated client sessions.
 
 HammerCore 0.5.2.

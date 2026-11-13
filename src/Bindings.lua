@@ -454,8 +454,21 @@ function Bindings.Page(panel, y, spec)
         return fs
     end
 
+    -- Pooled widgets change identity as spells are learned or bindings removed.
+    -- Drop only this editor's registrations before indexing the current items.
+    local indexed = {}
+    local function registerItem(widget, title, hint)
+        UI.RegisterRow(panel, widget, title)
+        widget.hcHintTitle, widget.hcHint = title, hint
+        indexed[title] = widget
+    end
     local bottom
     local function layout()
+        local owner = panel.hcHeaderOwner or panel
+        for title, widget in pairs(indexed) do
+            if owner.hcRows[title] == widget then owner.hcRows[title] = nil end
+        end
+        indexed = {}
         local bound = spec.bound()
         local keys = {}
         for _, entry in ipairs(bound) do keys[entry.id] = entry.key end
@@ -466,6 +479,8 @@ function Bindings.Page(panel, y, spec)
         for index, entry in ipairs(bound) do
             local r = row(index)
             r.item = entry
+            registerItem(r, "Change binding: " .. entry.name, entry.detail or "Replace this action's keyboard, mouse or wheel binding.")
+            registerItem(r.remove, "Remove binding: " .. entry.name, "Unbind every key for this action.")
             r:ClearAllPoints()
             r:SetPoint("TOPLEFT", 10, ly)
             r.icon:SetTexture(entry.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
@@ -509,6 +524,7 @@ function Bindings.Page(panel, y, spec)
                 tileIndex = tileIndex + 1
                 local t = tile(tileIndex)
                 t.item = item
+                registerItem(t, "Bind: " .. item.name, item.detail or "Choose a keyboard key, mouse button or wheel input, with optional modifiers.")
                 local column = (index - 1) % perRow
                 if column == 0 and index > 1 then ry = ry - TILE_H - GAP end
                 t:ClearAllPoints()

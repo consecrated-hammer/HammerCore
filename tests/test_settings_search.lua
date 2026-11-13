@@ -229,4 +229,33 @@ do
         "hidden clear action focuses the binding list")
 end
 
+-- Dynamic binding tiles, active rows and remove actions refresh their index.
+do
+    local HC = addon()
+    local learned, bound = true, true
+    HC.Settings:NewPage({ name = "Dynamic" }, function(panel, y)
+        return HC.Bindings.Page(panel, y, {
+            pool = function() return { { items = learned and { { id = "dash", name = "Dash", detail = "Sprint utility" } } or {} } } end,
+            bound = function() return bound and { { id = "dash", name = "Dash", key = "F" } } or {} end,
+            bind = function() return true end, unbind = function() end,
+        })
+    end)
+    HC.Settings:Show("Dynamic")
+    assert(not HC.Settings.errors.Dynamic, tostring(HC.Settings.errors.Dynamic))
+    equal(#HC.Settings:Search("bind: dash"), 1, "learned tile indexed")
+    equal(#HC.Settings:Search("sprint utility"), 1, "action detail indexed")
+    equal(#HC.Settings:Search("change binding: dash"), 1, "active binding indexed")
+    assert(HC.Settings:Focus("Dynamic", "Remove binding: Dash"), "remove action focuses")
+    learned = false
+    HC.Settings:Select("Dynamic")
+    equal(#HC.Settings:Search("bind: dash"), 0, "unlearned tile removed")
+    equal(#HC.Settings:Search("change binding: dash"), 1, "existing binding retained")
+    bound = false
+    HC.Settings:Select("Dynamic")
+    equal(#HC.Settings:Search("remove binding: dash"), 0, "removed binding index cleared")
+    learned = true
+    HC.Settings:Select("Dynamic")
+    equal(#HC.Settings:Search("bind: dash"), 1, "reused tile indexed again")
+end
+
 io.write("test_settings_search: ok\n")
