@@ -76,6 +76,10 @@ end)
 HC:Start()
 ```
 
+Minimap collectors may reparent the button into their own tray. HammerCore
+keeps reporting intended visibility through Show/Hide, but leaves positioning
+to the collector until the button is parented back to the minimap.
+
 ### What every addon gets
 
 | Area | Standard |

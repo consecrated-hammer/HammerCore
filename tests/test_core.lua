@@ -423,6 +423,60 @@ do
     equal(HC.Settings:IsShown(), true, "a click emitted by drag release is suppressed")
 end
 
+-- A minimap collector owns placement after reparenting a button into its tray.
+do
+    local HC = addon({ hideInCombat = true })
+    HC:Start()
+    local button = HC.Minimap.button
+    local tray = CreateFrame("Frame", "CollectorTray", UIParent)
+    -- The harness stores parent directly; this models the collector's SetParent.
+    button.parent = tray
+    button:ClearAllPoints()
+    button:SetPoint("TOPLEFT", tray, "TOPLEFT", 8, -8)
+
+    local function collected(label)
+        local point, relative, relativePoint, x, y = button:GetPoint()
+        equal(button:GetParent(), tray, label .. " keeps the tray parent")
+        equal(point, "TOPLEFT", label .. " keeps the tray anchor")
+        equal(relative, tray, label .. " keeps the tray reference")
+        equal(relativePoint, "TOPLEFT", label .. " keeps the relative anchor")
+        equal(x, 8, label .. " keeps the tray column")
+        equal(y, -8, label .. " keeps the tray row")
+    end
+    local angle = HC.State().minimapAngle
+    button.scripts.OnDragStart(button)
+    equal(button.scripts.OnUpdate, nil, "collected drag does not start minimap tracking")
+    equal(HC.State().minimapAngle, angle, "collected drag preserves saved angle")
+    HC.Minimap:Update()
+    collected("settings refresh")
+    Minimap.scripts.OnSizeChanged(Minimap)
+    collected("minimap resize")
+    InCombatLockdown = function() return true end
+    HC.combatFrame.scripts.OnEvent(HC.combatFrame, "PLAYER_REGEN_DISABLED")
+    InCombatLockdown = function() return false end
+    HC.combatFrame.scripts.OnEvent(HC.combatFrame, "PLAYER_REGEN_ENABLED")
+    collected("combat exit")
+    equal(button:IsShown(), true, "combat exit still restores intended visibility")
+    HC.State().minimap = false
+    HC.Minimap:Update()
+    equal(button:IsShown(), false, "explicit hiding still works when collected")
+    collected("explicit hide")
+
+    button.parent = Minimap
+    HC.State().minimap = true
+    HC.Minimap:Update()
+    local point, relative = button:GetPoint()
+    equal(point, "CENTER", "uncollecting restores normal placement")
+    equal(relative, Minimap, "uncollected placement uses the minimap")
+    button.scripts.OnDragStart(button)
+    local follow = button.scripts.OnUpdate
+    equal(type(follow), "function", "standalone dragging still starts tracking")
+    button.parent = tray
+    follow(button)
+    equal(button.scripts.OnUpdate, nil, "collection during a drag stops minimap tracking")
+    equal(HC.State().minimapAngle, angle, "collection during a drag preserves saved angle")
+end
+
 -- ── Rail button and combat hiding ─────────────────────────────────────────
 do
     local previewing = false

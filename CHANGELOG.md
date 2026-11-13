@@ -7,6 +7,8 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Leave collected minimap buttons in their tray cells across settings refreshes, minimap resizing and combat exit.
+
 - Show an optional addon logo beside the welcome heading.
 - Let preview windows snap to settings edges when dragged nearby and detach when dragged away.
 - Make profile glyphs larger and reserve space before setting labels.
