@@ -7,6 +7,9 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Make slider values editable, with Enter/focus-loss commit, Escape cancellation, range and step validation.
+- Shorten slider tracks beside numeric inputs in half-width settings cells.
+
 - Leave collected minimap buttons in their tray cells across settings refreshes, minimap resizing and combat exit.
 
 - Show an optional addon logo beside the welcome heading.

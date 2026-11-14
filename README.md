@@ -432,3 +432,12 @@ as `tests/hammercore/wow.lua` for its own tests.
 ## Licence
 
 GPL v3. See [LICENSE.txt](LICENSE.txt).
+
+### Editable slider values
+
+`UI.Slider` supplies an editable numeric field beside its track. Enter or focus
+loss commits; Escape restores the prior value. Input is clamped and snapped
+to the slider range and step. Half-column cells use a shorter track. Optional
+last argument `inputScale` keeps display units consistent while editing: use
+`100` for a percentage formatter backed by a 0..1 value. Existing callers
+remain compatible and default to raw numeric units.

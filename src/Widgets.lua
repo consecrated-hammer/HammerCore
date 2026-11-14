@@ -463,6 +463,7 @@ function UI.Row(parent, y, height, title, hint, width)
     row:SetPoint("TOPLEFT", x, y)
     stripe(row, slot, cellHeight)
     row.hcNextY, row.hcWidth = nextY, cellWidth
+    row.hcColumnCount = slot and slot.columns or 1
     if title ~= nil then
         row.Title = UI.FontString(row)
         row.Title:SetPoint("LEFT", UI.CELL_INSET, 0)
@@ -536,16 +537,24 @@ function UI.CellAction(row, text, width, hint)
     return button
 end
 
-function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width)
+function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width, inputScale)
+    assert(type(step) == "number" and step > 0, "slider step must be positive")
+    inputScale = inputScale or 1
+    assert(type(inputScale) == "number" and inputScale > 0, "slider input scale must be positive")
     local row = UI.Row(panel, y, UI.CELL_H, label, hint, width)
-    local sliderWidth = math.max(90, math.min(160, math.floor(row.hcWidth * 0.34)))
-    local box = CreateFrame("Frame", nil, row, "BackdropTemplate")
+    local halfPane = row.hcColumnCount == 2
+    local sliderWidth = halfPane and math.max(54, math.min(76, math.floor(row.hcWidth * 0.26)))
+        or math.max(90, math.min(160, math.floor(row.hcWidth * 0.34)))
+    local box = CreateFrame("EditBox", nil, row, "BackdropTemplate")
     box:SetSize(48, 24)
     box:SetPoint("RIGHT", -UI.CELL_INSET, 0)
+    box:SetAutoFocus(false)
+    box:SetFontObject(GameFontHighlightSmall or ChatFontNormal)
+    T.Text(box,"text")
+    box:SetTextInsets(4, 4, 0, 0)
+    box:SetJustifyH("CENTER")
+    box:SetMaxLetters(16)
     T.Surface(box, "field", "edge")
-    local value = UI.FontString(box, "GameFontHighlightSmall")
-    value:SetAllPoints()
-    value:SetJustifyH("CENTER")
     local s = CreateFrame("Slider", nil, row)
     s:SetOrientation("HORIZONTAL")
     s:SetSize(sliderWidth, 18)
@@ -586,23 +595,58 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
         if s.SetThumbTexture then s:SetThumbTexture(thumb) end
     end
 
-    local rendering = false
+    row.hcSlider, row.hcValueBox = s, box
+    local rendering, editing = false, false
+    local function places(v)
+        local text=("%.10f"):format(v):gsub("0+$", "")
+        return #(text:match("%.(.*)") or "")
+    end
+    local precision=10^math.max(places(step),places(minV))
+    local function snap(v)
+        v = math.max(minV, math.min(maxV, v))
+        local snapped=math.max(minV, math.min(maxV, minV + math.floor((v - minV) / step + 0.5) * step))
+        return math.floor(snapped*precision+0.5)/precision
+    end
     local function render(v)
         if row.hcRefreshTitle then row.hcRefreshTitle() end
-        value:SetText(fmt and fmt(v) or tostring(v))
+        if not editing then box:SetText(fmt and fmt(v) or tostring(v)) end
         local ratio = (v - minV) / math.max(1, maxV - minV)
         fill:SetWidth(math.max(0.01, (sliderWidth - 12) * ratio))
     end
     s:SetScript("OnValueChanged", function(_, v)
         -- Snap before storing: some clients report unsnapped values mid-drag.
-        v = math.floor(v / step + 0.5) * step
+        v = snap(v)
         render(v)
         if rendering then return end
         set(v)
         refreshAll(panel)
     end)
+    local function finish(save)
+        if not editing then return end
+        local input = tonumber(box:GetText() or "")
+        editing = false
+        if save and input and input == input and math.abs(input) < math.huge then
+            local v = snap(input / inputScale)
+            if math.abs(v - get()) > step * 0.000001 then set(v); refreshAll(panel) end
+        end
+        rendering = true
+        s:SetValue(get())
+        rendering = false
+        render(get())
+    end
+    box:SetScript("OnEditFocusGained", function()
+        editing = true
+        box:SetText(("%.10g"):format(get()*inputScale))
+        if box.HighlightText then box:HighlightText() end
+    end)
+    box:SetScript("OnEnterPressed", function() finish(true); box:ClearFocus() end)
+    box:SetScript("OnEscapePressed", function() finish(false); box:ClearFocus() end)
+    box:SetScript("OnEditFocusLost", function() finish(true) end)
+    s:SetScript("OnMouseDown", function() finish(true); box:ClearFocus() end)
+    UI.AttachHint(box, label, hint)
     s:EnableMouseWheel(true)
     s:SetScript("OnMouseWheel", function(self, delta)
+        finish(true); box:ClearFocus()
         local current = self:GetValue() or get()
         self:SetValue(math.max(minV, math.min(maxV, current + delta * step)))
     end)
