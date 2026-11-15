@@ -302,6 +302,8 @@ local ROW_H, TILE_W, TILE_H, GAP = 46, 96, 84, 8
 -- Returns the bottom y, and keeps the page's height current as it changes.
 function Bindings.Page(panel, y, spec)
     local label = spec.label or Bindings.Label
+    local native = T.IsBlizzard()
+    local poolInset = native and 14 or 0
     local width = UI.CONTENT_WIDTH
     local leftWidth = math.floor(width * 0.42)
     local rightWidth = width - leftWidth - 24
@@ -311,7 +313,8 @@ function Bindings.Page(panel, y, spec)
     left:SetPoint("TOPLEFT", UI.PAD, top)
     left:SetWidth(leftWidth)
     T.Surface(left, "raised", "edge")
-    local right = CreateFrame("Frame", nil, panel)
+    local right = CreateFrame("Frame", nil, panel, native and "BackdropTemplate" or nil)
+    if native then T.Surface(right, "raised", "edge") end
     right:SetPoint("TOPLEFT", left, "TOPRIGHT", 24, 0)
     right:SetWidth(rightWidth)
     UI.RegisterRow(panel, left, "Active bindings")
@@ -346,11 +349,16 @@ function Bindings.Page(panel, y, spec)
     empty:SetText(spec.empty or "Nothing bound yet. Pick something on the right.")
 
     local rightHeading = T.Font(UI.FontString(right, "GameFontHighlight", "accent"), 14)
-    rightHeading:SetPoint("TOPLEFT", 2, -14)
+    rightHeading:SetPoint("TOPLEFT", native and 14 or 2, -14)
     rightHeading:SetText(spec.poolTitle or "Available")
     local rightHint = UI.FontString(right, "GameFontHighlightSmall", "muted")
     rightHint:SetPoint("TOPLEFT", rightHeading, "BOTTOMLEFT", 0, -4)
     rightHint:SetText(spec.poolHint or "Click one to bind it.")
+    if native then
+        hint:SetWidth(leftWidth - 28)
+        rightHint:SetWidth(rightWidth - 28)
+        hint:SetWordWrap(true); rightHint:SetWordWrap(true)
+    end
 
     local function capture(item, current)
         Capture:Start({
@@ -486,7 +494,11 @@ function Bindings.Page(panel, y, spec)
         heading:SetText("Active bindings (" .. #bound .. ")")
         if clearAll then clearAll:SetShown(#bound > 0) end
         empty:SetShown(#bound == 0)
-        local ly = -54
+        local contentY = native and -(44 + math.max(hint:GetStringHeight() or 12, rightHint:GetStringHeight() or 12)) or -54
+        if native then
+            empty:ClearAllPoints(); empty:SetPoint("TOPLEFT", 14, contentY - 4)
+        end
+        local ly = contentY
         for index, entry in ipairs(bound) do
             local r = row(index)
             r.item = entry
@@ -510,13 +522,13 @@ function Bindings.Page(panel, y, spec)
         local leftHeight = -ly + 10
         left:SetHeight(leftHeight)
 
-        local ry, tileIndex, labelIndex = -54, 0, 0
-        local perRow = math.max(1, math.floor((rightWidth + GAP) / (TILE_W + GAP)))
+        local ry, tileIndex, labelIndex = contentY, 0, 0
+        local perRow = math.max(1, math.floor((rightWidth - poolInset * 2 + GAP) / (TILE_W + GAP)))
         for _, section in ipairs(spec.pool()) do
             labelIndex = labelIndex + 1
             local fs = sectionLabel(labelIndex)
             fs:ClearAllPoints()
-            fs:SetPoint("TOPLEFT", 2, ry)
+            fs:SetPoint("TOPLEFT", native and poolInset or 2, ry)
             fs:SetText(tostring(section.title or ""):upper())
             fs:Show()
             ry = ry - 20
@@ -525,7 +537,7 @@ function Bindings.Page(panel, y, spec)
                 labelIndex = labelIndex + 1
                 local none = sectionLabel(labelIndex)
                 none:ClearAllPoints()
-                none:SetPoint("TOPLEFT", 2, ry)
+                none:SetPoint("TOPLEFT", native and poolInset or 2, ry)
                 none:SetText(section.empty or "Nothing here for this character.")
                 T.Text(none, "muted")
                 none:Show()
@@ -539,7 +551,7 @@ function Bindings.Page(panel, y, spec)
                 local column = (index - 1) % perRow
                 if column == 0 and index > 1 then ry = ry - TILE_H - GAP end
                 t:ClearAllPoints()
-                t:SetPoint("TOPLEFT", column * (TILE_W + GAP), ry)
+                t:SetPoint("TOPLEFT", poolInset + column * (TILE_W + GAP), ry)
                 t.icon:SetTexture(item.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
                 t.name:SetText(item.name)
                 local key = keys[item.id]
@@ -557,8 +569,11 @@ function Bindings.Page(panel, y, spec)
         end
         for index = tileIndex + 1, #tiles do tiles[index]:Hide() end
         for index = labelIndex + 1, #labels do labels[index]:Hide() end
-        right:SetHeight(-ry)
-        bottom = top - math.max(leftHeight, -ry) - 16
+        local rightHeight = -ry + (native and 10 or 0)
+        local height = math.max(leftHeight, rightHeight)
+        if native then left:SetHeight(height) end
+        right:SetHeight(native and height or rightHeight)
+        bottom = top - height - 16
         if panel.hcSetBottom then panel.hcSetBottom(bottom) end
         return bottom
     end

@@ -32,7 +32,9 @@ Native close controls use UIPanelCloseButton; actions use UIPanelButtonTemplate.
 Settings/header horizontal sliders use UISliderTemplate, its native groove and
 32px thumb, with an art-only fallback for headless fixtures. Vertical scrollbars
 remain 16px with a native groove. Checkboxes are 22px. Secure quiz sharing retains its secure template
-and adds panel art without inheriting click scripts. Binding icons use native
+and adds panel art without inheriting click scripts. Native binding pages use matching, top-aligned framed columns with equal heights
+and matching heading/content insets; wrapped hints reserve shared vertical space.
+Binding icons use native
 quickslot borders, square highlights and pressed art. Selected/wrong states use
 native highlight art and label colours. No Blizzard-owned frame is reskinned.
 
