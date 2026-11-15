@@ -112,6 +112,7 @@ for role, colour in pairs(Theme.registry.classic.colours) do native.colours[role
 for _, role in ipairs({ "outer", "rail", "content", "header", "raised", "field", "menu" }) do
     native.colours[role] = { 1, 1, 1, 1 }
 end
+native.colours.header = { 0.60, 0.46, 0.28, 1 }
 native.colours.hover = { 1, 0.94, 0.75, 1 }
 native.colours.menuActive = { 1, 0.94, 0.75, 1 }
 Theme.registry.blizzard = native
@@ -119,9 +120,10 @@ Theme.registry.blizzard = native
 -- Artwork comes from the client; all frames remain owned by this addon.
 Theme.NATIVE = {
     background = "Interface\\DialogFrame\\UI-DialogBox-Background",
-    dark = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    dark = "Interface\\FrameGeneral\\UI-Background-Rock",
+    marble = "Interface\\FrameGeneral\\UI-Background-Marble",
     border = "Interface\\DialogFrame\\UI-DialogBox-Border",
-    inset = "Interface\\Tooltips\\UI-Tooltip-Background",
+    inset = "Interface\\DialogFrame\\UI-DialogBox-Background",
     insetBorder = "Interface\\Tooltips\\UI-Tooltip-Border",
     highlight = "Interface\\QuestFrame\\UI-QuestTitleHighlight",
     check = "Interface\\Buttons\\UI-CheckBox-Check",
@@ -130,6 +132,43 @@ Theme.NATIVE = {
     scrollThumb = "Interface\\Buttons\\UI-ScrollBar-Knob",
     progress = "Interface\\TargetingFrame\\UI-StatusBar",
 }
+
+-- The reference is the classic compact raid manager. Use its eight actual
+-- border pieces, without the manager's collapse/resize or protected scripts.
+function Theme.RaidBorder(frame)
+    if frame.hcRaidBorder then return end
+    local pieces = {}
+    local function piece(key, file, w, h, a, relative, point, x, y)
+        local t = frame:CreateTexture(nil, "ARTWORK")
+        t:SetTexture("Interface\\RaidFrame\\RaidPanel-" .. file)
+        t:SetSize(w, h)
+        t:SetPoint(a, relative or frame, point or a, x or 0, y or 0)
+        pieces[key] = t
+        return t
+    end
+    local tl = piece("tl", "UpperLeft", 32, 32, "TOPLEFT", nil, nil, -5, 0)
+    local tr = piece("tr", "UpperRight", 32, 32, "TOPRIGHT")
+    local bl = piece("bl", "BottomLeft", 32, 32, "BOTTOMLEFT", nil, nil, -5, 0)
+    local br = piece("br", "BottomRight", 32, 32, "BOTTOMRIGHT")
+    local top = piece("top", "UpperMiddle", 1, 16, "TOPLEFT", tl, "TOPRIGHT", 0, 1)
+    top:SetPoint("TOPRIGHT", tr, "TOPLEFT", 0, 1)
+    local bottom = piece("bottom", "BottomMiddle", 1, 16, "BOTTOMLEFT", bl, "BOTTOMRIGHT", 0, -4)
+    bottom:SetPoint("BOTTOMRIGHT", br, "BOTTOMLEFT", 0, -4)
+    local left = piece("left", "Left", 16, 1, "TOPLEFT", tl, "BOTTOMLEFT", -1, 0)
+    left:SetPoint("BOTTOMLEFT", bl, "TOPLEFT", -1, 0)
+    local right = piece("right", "Right", 16, 1, "TOPRIGHT", tr, "BOTTOMRIGHT", 2, 0)
+    right:SetPoint("BOTTOMRIGHT", br, "TOPRIGHT", 2, 0)
+    if top.SetHorizTile then top:SetHorizTile(true); bottom:SetHorizTile(true) end
+    if left.SetVertTile then left:SetVertTile(true); right:SetVertTile(true) end
+    frame.hcRaidBorder = pieces
+end
+
+function Theme.SelectTab(button, active)
+    if not Theme.IsBlizzard() then return end
+    if active and PanelTemplates_SelectTab then PanelTemplates_SelectTab(button)
+    elseif not active and PanelTemplates_DeselectTab then PanelTemplates_DeselectTab(button) end
+    Theme.Text(button.Text, active and "accent" or "text")
+end
 
 -- These helpers replace art without inheriting scripts or automatic toggles.
 function Theme.CheckArt(texture)
@@ -153,10 +192,20 @@ end
 
 function Theme.SliderArt(slider, thumb, track, vertical)
     if not Theme.IsBlizzard() then return end
-    if track then track:SetTexture("Interface\\Buttons\\UI-SliderBar-Background"); track:SetVertexColor(1, 1, 1, 1) end
+    if track then track:Hide() end
+    if not rawget(slider, "NineSlice") and not slider.hcNativeGroove then
+        local groove = CreateFrame("Frame", nil, slider, "BackdropTemplate")
+        if vertical then groove:SetAllPoints()
+        else groove:SetPoint("LEFT"); groove:SetPoint("RIGHT"); groove:SetHeight(16) end
+        groove:SetFrameLevel(math.max(0, slider:GetFrameLevel() - 1))
+        groove:SetBackdrop({ bgFile = "Interface\\Buttons\\UI-SliderBar-Background", edgeFile = "Interface\\Buttons\\UI-SliderBar-Border", tile = true, tileSize = 8, edgeSize = 8,
+            insets = { left = 3, right = 3, top = 6, bottom = 6 } })
+        slider.hcNativeGroove = groove
+    end
     thumb:SetTexture(vertical and Theme.NATIVE.scrollThumb or Theme.NATIVE.thumb)
     thumb:SetVertexColor(1, 1, 1, 1)
-    thumb:SetSize(vertical and 16 or 28, vertical and 24 or 28)
+    thumb:SetTexCoord(0, 1, 0, 1)
+    thumb:SetSize(vertical and 16 or 32, vertical and 24 or 32)
     if vertical then slider:SetWidth(16) end
 end
 
@@ -211,12 +260,35 @@ function Theme.Surface(frame, background, border)
     if Theme.IsBlizzard() then
         local outer = background == "outer"
         local clear = background == "transparent"
-        frame:SetBackdrop({ bgFile = clear and Theme.NATIVE.highlight or (background == "field" or background == "menu") and Theme.NATIVE.inset or Theme.NATIVE.dark,
-            edgeFile = border and (outer and Theme.NATIVE.border or Theme.NATIVE.insetBorder) or nil,
-            tile = not clear, tileSize = 32, edgeSize = border and (outer and 32 or 8) or nil,
-            insets = { left = outer and 11 or 3, right = outer and 11 or 3, top = outer and 11 or 3, bottom = outer and 11 or 3 } })
+        if not clear and not frame.hcOpaqueBase then
+            local base = frame:CreateTexture(nil, "BACKGROUND", nil, -8)
+            local pad = outer and 8 or border and 3 or 0
+            base:SetPoint("TOPLEFT", pad, -pad)
+            base:SetPoint("BOTTOMRIGHT", -pad, pad)
+            base:SetColorTexture(0.10, 0.095, 0.085, 1)
+            frame.hcOpaqueBase = base
+        end
+        frame:SetBackdrop({ bgFile = clear and Theme.NATIVE.highlight or (background == "field" or background == "menu") and Theme.NATIVE.inset or background == "header" and Theme.NATIVE.marble or Theme.NATIVE.dark,
+            edgeFile = border and not outer and Theme.NATIVE.insetBorder or nil,
+            tile = not clear, tileSize = 64, edgeSize = border and not outer and 8 or nil,
+            insets = { left = outer and 8 or 3, right = outer and 8 or 3, top = outer and 8 or 3, bottom = outer and 8 or 3 } })
+        -- BackdropTemplate's Center starts in BACKGROUND/-8. Promote that
+        -- owned texture above our opaque base so the stone remains visible.
+        local center = rawget(frame, "Center")
+        if center and center.SetDrawLayer then center:SetDrawLayer("BACKGROUND", -7) end
+        if frame.hcOpaqueBase then frame.hcOpaqueBase:SetShown(not clear) end
+        if outer then
+            Theme.RaidBorder(frame)
+            if not frame.hcTitleBand then
+                local band = frame:CreateTexture(nil, "ARTWORK", nil, -1)
+                band:SetTexture(Theme.NATIVE.marble)
+                band:SetPoint("TOPLEFT", 8, -8); band:SetPoint("TOPRIGHT", -8, -8)
+                band:SetHeight(28); band:SetVertexColor(0.60, 0.46, 0.28, 1)
+                frame.hcTitleBand = band
+            end
+        end
         frame:SetBackdropColor(Theme.Unpack(background))
-        if border then frame:SetBackdropBorderColor(1, 1, 1, 1) end
+        if border then frame:SetBackdropBorderColor(0.78, 0.65, 0.43, 1) end
         frame.hcPresentation = "blizzard"
         return frame
     end
@@ -238,7 +310,7 @@ end
 
 function Theme.Border(frame, border)
     if Theme.IsBlizzard() then
-        if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(1, 1, 1, 1) end
+        if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(0.78, 0.65, 0.43, 1) end
         -- Selection and quiz verdicts must remain visible even on native panel
         -- buttons, which may not expose SetBackdropBorderColor at all.
         local active = border == "accent" or border == "selected" or border == "danger"

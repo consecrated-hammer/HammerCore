@@ -10,23 +10,31 @@ claim to change the fixed preview.
 
 ## Artwork and geometry
 
-`Theme.NATIVE` is the resource manifest. It uses the client's dialog background
-and border, tooltip inset/background, quest selection highlight, checkbox tick,
-chat scroll-down arrow, slider thumb, scrollbar knob and status-bar texture.
-Native close controls use `UIPanelCloseButton`; ordinary actions use
-`UIPanelButtonTemplate`. Secure quiz sharing keeps its secure template and uses
-panel button textures without inheriting scripts. Binding icons use quickslot
-borders with native square highlight and pressed art. No Blizzard-owned frames
-or global tooltip/menu appearance is altered.
+`Theme.NATIVE` and `Theme.RaidBorder` are the resource manifest. The owner’s
+reference is the compact raid/Party panel: `UI-Background-Rock` provides the
+stone interior, and the eight `Interface\RaidFrame\RaidPanel-*` pieces provide
+its bronze surround. Every non-transparent surface has an opaque base below
+the client texture, so texture alpha cannot show the game world through it.
+Title bars use the client’s marble texture in a warm bronze tone; inset fields
+use the dark native dialog background and bronze-tinted inset borders.
 
-Outer frames have 32px border art and 11px backdrop insets. Settings children
-are inset 12px so their backgrounds do not cover the outer border. The native
-settings window gets 40px additional width to retain its useful viewport.
-Nested inset borders use 8px art and 3px insets; checkboxes are 22px, vertical
-scrollbars 16px with 16x24 thumbs, horizontal slider thumbs 28px. Native footer
-links use text links. Alternating modern stripes, watermark, fades and vertical
-selection accents are hidden; headings use the native gold palette. Input and
-menu behaviour remains in the existing widget factories.
+The native settings window is 860x660. Its pages are horizontal
+`PanelTopTabButtonTemplate` tabs, with proper active/inactive art and extra room
+for the unread marker. Owned show/display callbacks preserve sizing and wrap
+extra pages into additional rows. Child controls sit inside a 16px inset; the
+border stays on the parent artwork layer. The side rail and redundant one-page subtab are absent.
+The gold title/brand and stock window-scale slider sit in a compact title bar.
+Descriptions wrap and reserve their measured height. Footer links remain text
+links, and the read-only macro well has a minimum 64px height and a small game
+font. Existing page names, search registration and callbacks are preserved.
+
+Native close controls use UIPanelCloseButton; actions use UIPanelButtonTemplate.
+Settings/header horizontal sliders use UISliderTemplate, its native groove and
+32px thumb, with an art-only fallback for headless fixtures. Vertical scrollbars
+remain 16px with a native groove. Checkboxes are 22px. Secure quiz sharing retains its secure template
+and adds panel art without inheriting click scripts. Binding icons use native
+quickslot borders, square highlights and pressed art. Selected/wrong states use
+native highlight art and label colours. No Blizzard-owned frame is reskinned.
 
 Checkboxes deliberately remain ordinary Buttons with art and manual checked
 state: inheriting an auto-toggling CheckButton would execute existing handlers

@@ -152,7 +152,7 @@ end
 
 function UI.FontString(parent, template, role)
     local fs = parent:CreateFontString(nil, "ARTWORK", template or "GameFontHighlight")
-    T.Text(fs, role or "text")
+    T.Text(fs, role or (T.IsBlizzard() and template and template:find("GameFontNormal", 1, true) and "accent" or "text"))
     return fs
 end
 
@@ -591,7 +591,7 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
     box:SetJustifyH("CENTER")
     box:SetMaxLetters(16)
     T.Surface(box, "field", "edge")
-    local s = CreateFrame("Slider", nil, row)
+    local s = CreateFrame("Slider", nil, row, T.IsBlizzard() and "UISliderTemplate" or nil)
     s:SetOrientation("HORIZONTAL")
     s:SetSize(sliderWidth, 18)
     s:SetPoint("RIGHT", box, "LEFT", -12, 0)
@@ -602,6 +602,7 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
     local fill
     if T.IsClassic() then
         -- Blizzard's slider bar: a bordered groove and the gold thumb.
+        if not T.IsBlizzard() or not rawget(s, "NineSlice") then
         local groove = CreateFrame("Frame", nil, s, "BackdropTemplate")
         groove:SetPoint("LEFT", 0, 0)
         groove:SetPoint("RIGHT", 0, 0)
@@ -612,7 +613,9 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
                 edgeFile = "Interface\\Buttons\\UI-SliderBar-Border", tile = true, tileSize = 8, edgeSize = 8,
                 insets = { left = 3, right = 3, top = 6, bottom = 6 } })
         end
-        local thumb = s:CreateTexture(nil, "OVERLAY")
+        if T.IsBlizzard() then s.hcNativeGroove = groove end
+        end
+        local thumb = rawget(s, "Thumb") or s:CreateTexture(nil, "OVERLAY")
         thumb:SetTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
         thumb:SetSize(32, 32)
         T.SliderArt(s, thumb)
@@ -1182,8 +1185,9 @@ function UI.Text(panel, text, y, role)
     fs:SetPoint("TOPLEFT", UI.PAD + 2, y - 4)
     fs:SetWidth(UI.CONTENT_WIDTH)
     fs:SetJustifyH("LEFT")
-    if fs.SetWordWrap then fs:SetWordWrap(false) end
+    if fs.SetWordWrap then fs:SetWordWrap(T.IsBlizzard()) end
     fs:SetText(text)
+    if T.IsBlizzard() then return fs, y - math.max(18, fs:GetStringHeight() or 18) - 8 end
     return fs, y - 24
 end
 

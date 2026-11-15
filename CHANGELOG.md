@@ -7,6 +7,8 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+- Match the Party-panel reference with opaque stone interiors, raid-panel borders, compact gold tabs and proper native slider grooves.
+
 - Add a consumer-scoped Blizzard presentation preview with native controls, menus, frames and serialised private update notices. Modern consumers keep their current appearance and shared update window.
 
 ## [0.5.3] - 2026-11-15

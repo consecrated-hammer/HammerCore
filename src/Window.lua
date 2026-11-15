@@ -115,6 +115,7 @@ local function createBody(page, build, columns, top)
         self:SetVerticalScroll(math.max(0, math.min(range, self:GetVerticalScroll() - delta * 48)))
     end)
     scroll:SetScript("OnVerticalScroll", updateBar)
+    if T.IsBlizzard() then scroll:SetScript("OnScrollRangeChanged", updateBar) end
     bar:SetScript("OnValueChanged", function(_, value)
         if syncing then return end
         scroll:SetVerticalScroll(math.max(0, math.min(scroll:GetVerticalScrollRange() or 0, value)))
@@ -233,7 +234,7 @@ end
 function UI.CloseButton(parent, onClick, size)
     if T.IsBlizzard() then
         local close = CreateFrame("Button", nil, parent, "UIPanelCloseButton")
-        close:SetSize(size or 32, size or 32)
+        close:SetSize(size or 28, size or 28)
         close:SetScript("OnClick", onClick)
         return close
     end
@@ -305,11 +306,12 @@ function Settings:Create()
     local size = HC.spec.window or {}
     local state = HC.State()
     local native = T.IsBlizzard()
-    local inset = native and 12 or 1
-    local width = math.max(size.width or 0, MIN_WIDTH + (native and 40 or 0))
-    local height = math.max(size.height or 0, MIN_HEIGHT)
+    local inset = native and 16 or 1
+    local width = math.max(size.width or 0, native and 860 or MIN_WIDTH)
+    local height = math.max(size.height or 0, native and 660 or MIN_HEIGHT)
+    local railWidth = native and 0 or RAIL_WIDTH
     -- Settings fill the space between the rail and the scroll bar.
-    UI.CONTENT_WIDTH = width - RAIL_WIDTH - UI.PAD * 2 - 22 - (native and 22 or 0)
+    UI.CONTENT_WIDTH = width - railWidth - UI.PAD * 2 - 22 - (native and 30 or 0)
 
     local frame = CreateFrame("Frame", HC.FrameName("SettingsFrame"), UIParent, "BackdropTemplate")
     frame:SetSize(width, height)
@@ -337,20 +339,34 @@ function Settings:Create()
     rail:SetPoint("TOPLEFT", inset, -inset)
     rail:SetPoint("BOTTOMLEFT", inset, inset)
     rail:SetWidth(RAIL_WIDTH)
-    T.Surface(rail, "rail")
+    if native then
+        rail:ClearAllPoints()
+        rail:SetPoint("TOPLEFT", 16, -52)
+        rail:SetPoint("TOPRIGHT", -16, -52)
+        rail:SetHeight(28)
+        rail.tabPadding, rail.minTabWidth, rail.maxTabWidth = 20, 60, 150
+    end
+    if not native then T.Surface(rail, "rail") end
     local railEdge = T.Fill(frame:CreateTexture(nil, "ARTWORK"), "edge")
     railEdge:SetPoint("TOPLEFT", RAIL_WIDTH + 1, -1)
     railEdge:SetPoint("BOTTOMLEFT", RAIL_WIDTH + 1, 1)
     railEdge:SetWidth(1)
     if native then railEdge:Hide() end
 
-    local brand = CreateFrame("Button", nil, rail)
+    local brand = CreateFrame("Button", nil, rail, native and "BackdropTemplate" or nil)
     brand:SetPoint("TOPLEFT", 0, 0)
     brand:SetPoint("TOPRIGHT", 0, 0)
     brand:SetHeight(HEADER_HEIGHT - 20)
+    if native then
+        brand:ClearAllPoints()
+        brand:SetPoint("TOPLEFT", frame, "TOPLEFT", 16, -16)
+        brand:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -16, -16)
+        brand:SetHeight(28)
+        T.Surface(brand, "header")
+    end
     dragFrom(brand)
     local icon = brand:CreateTexture(nil, "ARTWORK")
-    icon:SetSize(40, 40)
+    icon:SetSize(native and 24 or 40, native and 24 or 40)
     icon:SetPoint("LEFT", 20, 0)
     icon:SetTexture(HC.spec.icon)
     local title = T.Font(UI.FontString(brand, "GameFontNormalLarge", native and "accent" or "text"), native and 18 or 20)
@@ -362,19 +378,21 @@ function Settings:Create()
     brandRule:SetPoint("TOPLEFT", 16, -(HEADER_HEIGHT - 20))
     brandRule:SetPoint("TOPRIGHT", -16, -(HEADER_HEIGHT - 20))
     brandRule:SetHeight(1)
+    if native then brandRule:Hide() end
 
     local version = UI.FontString(rail, "GameFontDisableSmall", "muted")
     version:SetPoint("BOTTOMLEFT", 20, 18)
     version:SetText(tostring(HC.VERSION_TEXT))
+    if native then version:ClearAllPoints(); version:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 24) end
     self.versionText = version
 
     -- ── Header band: title, description, scale, close, tabs ──
     local header = CreateFrame("Frame", nil, frame, native and "BackdropTemplate" or nil)
-    self.header, self.headerWidth = header, width - RAIL_WIDTH - 3 - (native and 22 or 0)
-    header:SetPoint("TOPLEFT", RAIL_WIDTH + (native and 12 or 2), -inset)
+    self.header, self.headerWidth = header, width - railWidth - 3 - (native and 30 or 0)
+    header:SetPoint("TOPLEFT", railWidth + (native and 16 or 2), native and -86 or -inset)
     header:SetPoint("TOPRIGHT", -inset, -inset)
-    header:SetHeight(HEADER_HEIGHT)
-    if native then T.Surface(header, "header")
+    header:SetHeight(native and 84 or HEADER_HEIGHT)
+    if native then T.Surface(header, "content")
     else T.Fill(header:CreateTexture(nil, "BACKGROUND"), "header"):SetAllPoints() end
     local shade = T.Icon(header:CreateTexture(nil, "BORDER"), "Fade.tga", "outer")
     shade:SetPoint("BOTTOMLEFT")
@@ -411,16 +429,16 @@ function Settings:Create()
     tag:Hide()
     self.profileTag = tag
 
-    local close = closeButton(header, frame)
-    close:SetPoint("TOPRIGHT", -14, -14)
+    local close = closeButton(native and brand or header, frame)
+    close:SetPoint("TOPRIGHT", native and -8 or -14, native and -1 or -14)
 
     -- Window scale: a small slider, saved with the window position.
-    local scaleValue = UI.FontString(header, "GameFontHighlightSmall", "text")
+    local scaleValue = UI.FontString(native and brand or header, "GameFontHighlightSmall", "text")
     scaleValue:SetPoint("RIGHT", close, "LEFT", -14, 0)
     scaleValue:SetWidth(38)
     scaleValue:SetJustifyH("RIGHT")
     self.scaleValue = scaleValue
-    local scale = CreateFrame("Slider", nil, header)
+    local scale = CreateFrame("Slider", nil, native and brand or header, native and "UISliderTemplate" or nil)
     scale:SetOrientation("HORIZONTAL")
     scale:SetSize(100, 16)
     scale:SetPoint("RIGHT", scaleValue, "LEFT", -8, 0)
@@ -431,11 +449,11 @@ function Settings:Create()
     scaleTrack:SetPoint("LEFT", 5, 0)
     scaleTrack:SetPoint("RIGHT", -5, 0)
     scaleTrack:SetHeight(3)
-    local scaleThumb = T.Icon(scale:CreateTexture(nil, "OVERLAY"), "Circle.tga", "accent")
+    local scaleThumb = rawget(scale, "Thumb") or T.Icon(scale:CreateTexture(nil, "OVERLAY"), "Circle.tga", "accent")
     scaleThumb:SetSize(12, 12)
     T.SliderArt(scale, scaleThumb, scaleTrack)
     if scale.SetThumbTexture then scale:SetThumbTexture(scaleThumb) end
-    local scaleLabel = UI.FontString(header, "GameFontHighlightSmall", "muted")
+    local scaleLabel = UI.FontString(native and brand or header, "GameFontHighlightSmall", "muted")
     scaleLabel:SetPoint("RIGHT", scale, "LEFT", -10, 0)
     scaleLabel:SetText("Window scale")
 
@@ -472,7 +490,7 @@ function Settings:Create()
 
     -- ── Footer: support links, close; Reload UI only when one is needed ──
     local footer = CreateFrame("Frame", nil, frame, native and "BackdropTemplate" or nil)
-    footer:SetPoint("BOTTOMLEFT", RAIL_WIDTH + (native and 12 or 2), inset)
+    footer:SetPoint("BOTTOMLEFT", railWidth + (native and 16 or 2), inset)
     footer:SetPoint("BOTTOMRIGHT", -inset, inset)
     footer:SetHeight(FOOTER_HEIGHT)
     if native then T.Surface(footer, "rail")
@@ -527,9 +545,10 @@ function Settings:Create()
     -- Finish the rail before building any page: a page that fails must not
     -- leave the window without navigation.
     local railY, previous = -(HEADER_HEIGHT - 4), nil
+    local navX = 0
     self.dividers = {}
     for _, spec in ipairs(self.order) do
-        if spec.group ~= previous then
+        if not native and spec.group ~= previous then
             if previous then
                 local divider = T.Fill(rail:CreateTexture(nil, "ARTWORK"), "edge")
                 divider:SetPoint("TOPLEFT", 20, railY - 6)
@@ -548,12 +567,25 @@ function Settings:Create()
             railY = railY - 28
             previous = spec.group
         end
-        local button = CreateFrame("Button", nil, rail)
+        local button = CreateFrame("Button", nil, rail, native and "PanelTopTabButtonTemplate" or nil)
         button:SetSize(RAIL_WIDTH, 32)
         button:SetPoint("TOPLEFT", 0, railY)
-        button.Text = UI.FontString(button)
+        button.Text = rawget(button, "Text") or UI.FontString(button)
         button.Text:SetPoint("LEFT", 26, 0)
         button.Text:SetText(spec.title or spec.name)
+        if native then
+            local labelWidth = button.Text:GetStringWidth() or 0
+            local hasBadge = HC.Pages and spec == HC.Pages.whatsNew
+            local tabWidth = math.max(60, labelWidth + 26 + (hasBadge and 18 or 0))
+            button.selectedTextX, button.deselectedTextX = hasBadge and -8 or 0, hasBadge and -8 or 0
+            button:SetSize(tabWidth, 28)
+            button:ClearAllPoints(); button:SetPoint("TOPLEFT", navX, 0)
+            button.Text:ClearAllPoints(); button.Text:SetPoint("CENTER", button.selectedTextX, 1)
+            navX = navX + tabWidth + 4
+            button.hcNativeBadge = hasBadge
+            button:SetScript("OnShow", function() Settings:LayoutNativeNavigation() end)
+            button:SetScript("OnEvent", function() Settings:LayoutNativeNavigation() end)
+        end
         button.hover = T.Fill(button:CreateTexture(nil, "BACKGROUND"), "stripe")
         button.hover:SetAllPoints()
         button.hover:Hide()
@@ -574,7 +606,7 @@ function Settings:Create()
             local badge = button:CreateTexture(nil, "OVERLAY")
             badge:SetTexture(BADGE_UNREAD)
             badge:SetSize(20, 20)
-            badge:SetPoint("RIGHT", -16, 0)
+            badge:SetPoint("RIGHT", native and -1 or -16, 0)
             badge:Hide()
             -- Opening the page turns the "!" into the turn-in "?", which
             -- holds a moment and fades, like handing in a quest.
@@ -590,7 +622,7 @@ function Settings:Create()
                 badge:SetTexture(BADGE_UNREAD)
             end)
             badge.complete = complete
-            button.Text:SetPoint("RIGHT", badge, "LEFT", -4, 0)
+            if not native then button.Text:SetPoint("RIGHT", badge, "LEFT", -4, 0) end
             button.Text:SetJustifyH("LEFT")
             button.unreadBadge = badge
         end
@@ -598,13 +630,16 @@ function Settings:Create()
         railY = railY - 32
     end
 
+    self:LayoutNativeNavigation()
+
     -- An addon may pin one action to the foot of the rail, such as a live
     -- preview the player wants while changing settings on any page.
     -- spec.railButton = { label = string|fn, run = fn, active = fn? }
     local railButton = HC.spec.railButton
     if railButton then
-        local button = UI.Button(rail, RAIL_WIDTH - 40, 28)
-        button:SetPoint("BOTTOMLEFT", 20, 42)
+        local button = UI.Button(native and footer or rail, RAIL_WIDTH - 40, 28)
+        if native then button:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 22, 42)
+        else button:SetPoint("BOTTOMLEFT", 20, 42) end
         button:SetScript("OnClick", function()
             railButton.run()
             Settings:RefreshRail()
@@ -642,6 +677,33 @@ function Settings:Create()
     return frame
 end
 
+-- Native tabs own their geometry so the stock template cannot resize them
+-- after our placement. Wrap for additional pages instead of losing navigation.
+function Settings:LayoutNativeNavigation()
+    if not T.IsBlizzard() or not self.window or not self.rail then return end
+    local available = self.window:GetWidth() - 32
+    local x, row = 0, 0
+    for _, spec in ipairs(self.order or {}) do
+        local button = self.buttons[spec.name]
+        if button then
+            button.Text:SetWidth(0)
+            local textWidth = button.Text:GetStringWidth() or 0
+            local padding = 26 + (button.hcNativeBadge and 18 or 0)
+            local width = math.min(available, math.max(60, textWidth + padding))
+            if x > 0 and x + width > available then x, row = 0, row + 1 end
+            button:SetSize(width, 28)
+            button.Text:SetWidth(math.max(1, width - padding))
+            button:ClearAllPoints(); button:SetPoint("TOPLEFT", x, -row * 30)
+            x = x + width + 4
+        end
+    end
+    self.nativeNavRows = row + 1
+    self.rail:SetHeight(self.nativeNavRows * 30)
+    self.header:ClearAllPoints()
+    self.header:SetPoint("TOPLEFT", self.window, "TOPLEFT", 16, -(52 + self.nativeNavRows * 30 + 4))
+    self.header:SetPoint("TOPRIGHT", self.window, "TOPRIGHT", -16, -(52 + self.nativeNavRows * 30 + 4))
+end
+
 -- Support links follow the Visibility setting.
 function Settings:RefreshFooter()
     local shown = HC.State().supportLinks ~= false
@@ -653,13 +715,15 @@ end
 function Settings:RefreshTabs(page)
     for _, button in ipairs(self.tabButtons) do button:Hide() end
     if not page then return end
+    if T.IsBlizzard() and #(page.tabs or {}) <= 1 then self.tabBar:Hide(); return end
+    self.tabBar:Show()
     local x = 0
     for index, name in ipairs(page.tabs or {}) do
         local button = self.tabButtons[index]
         if not button then
-            button = CreateFrame("Button", nil, self.tabBar)
+            button = CreateFrame("Button", nil, self.tabBar, T.IsBlizzard() and "PanelTopTabButtonTemplate" or nil)
             button:SetHeight(32)
-            button.Text = T.Font(UI.FontString(button, "GameFontHighlight"), 14)
+            button.Text = rawget(button, "Text") or T.Font(UI.FontString(button, "GameFontHighlight"), 14)
             button.Text:SetPoint("CENTER", 0, 2)
             button.line = T.Fill(button:CreateTexture(nil, "OVERLAY"), "accent")
             button.line:SetPoint("BOTTOMLEFT", 4, 0)
@@ -671,9 +735,14 @@ function Settings:RefreshTabs(page)
             button:SetScript("OnLeave", function(self)
                 if not self.active then T.Text(self.Text, "muted") end
             end)
+            if T.IsBlizzard() then
+                button:SetScript("OnShow", function() end)
+                button:SetScript("OnEvent", function() Settings:RefreshTabs(Settings.pages[Settings.selected]) end)
+            end
             self.tabButtons[index] = button
         end
         button.Text:SetText(name)
+        if T.IsBlizzard() then button.Text:SetWidth(0) end
         local width = (button.Text.GetStringWidth and button.Text:GetStringWidth() or 0) or 0
         width = math.max(60, width + 28)
         button:SetWidth(width)
@@ -681,8 +750,9 @@ function Settings:RefreshTabs(page)
         button:SetPoint("BOTTOMLEFT", x, 0)
         x = x + width + 6
         button.active = name == page.selectedTab
-        button.line:SetShown(button.active)
-        T.Text(button.Text, button.active and "text" or "muted")
+        button.line:SetShown(button.active and not T.IsBlizzard())
+        if T.IsBlizzard() then T.SelectTab(button, button.active)
+        else T.Text(button.Text, button.active and "text" or "muted") end
         local pageName, tabName = page.name, name
         button:SetScript("OnClick", function() Settings:Show(pageName, tabName) end)
         button:Show()
@@ -739,6 +809,10 @@ function Settings:Select(name, tab)
             button.activeBar:SetShown(active)
             button.activeBg:SetShown(active)
             T.Text(button.Text, active and "text" or "muted")
+            if T.IsBlizzard() then
+                button.activeBg:Hide(); button.activeBar:Hide()
+                T.SelectTab(button, active)
+            end
         end
     end
     local page = self.pages[name]
@@ -1049,6 +1123,12 @@ function Settings:LayoutHeaderTools()
     end
     if self.pageDescription then
         self.pageDescription:SetWidth(math.max(1, (self.headerWidth or 0) - UI.PAD * 2 - 5 - reserved))
+        if T.IsBlizzard() then
+            self.pageDescription:SetWordWrap(true)
+            local page = self.selected and self.pages[self.selected]
+            local tabs = page and #(page.tabs or {}) > 1
+            header:SetHeight(math.max(84, 52 + (self.pageDescription:GetStringHeight() or 16) + 12) + (tabs and 32 or 0))
+        end
     end
 end
 

@@ -42,7 +42,12 @@ eq(saved.hammerCore.theme,"modern","saved Modern preference preserved")
 HC.Settings:Show("General")
 eq(next(HC.Settings.errors),nil,"all reference pages construct")
 eq(HC.Settings.window.hcPresentation,"blizzard","native shell")
-eq(HC.Settings.window.backdrop.edgeFile,HC.Theme.NATIVE.border,"Blizzard outer border")
+eq(HC.Settings.window.backdrop.bgFile,"Interface\\FrameGeneral\\UI-Background-Rock","raid reference rock interior")
+eq(HC.Settings.window.hcOpaqueBase~=nil,true,"opaque backplate prevents world bleed-through")
+eq(HC.Settings.window.hcRaidBorder.tl.texture,"Interface\\RaidFrame\\RaidPanel-UpperLeft","actual raid-panel border pieces")
+eq(HC.Settings.window:GetWidth(),860,"compact native width")
+eq(HC.Settings.buttons.General.template,"PanelTopTabButtonTemplate","native horizontal navigation tabs")
+eq(HC.Settings.tabBar:IsShown(),false,"no redundant single-page tab")
 eq(HC.testCheck.normalTexture,"Interface\\Buttons\\UI-CheckBox-Up","native checkbox")
 wow.Click(HC.testCheck);eq(saved.on,true,"one click toggles once")
 wow.Click(HC.testCheck);eq(saved.on,false,"second click toggles once")
@@ -91,6 +96,41 @@ eq(saved.hammerCore.whatsNewSeen,"2.0.0","shown news marked once")
 HC.WhatsNew:Hide()
 eq(ConsecratedHammerWelcome.busy,0,"native close releases reservation")
 eq(ConsecratedHammerWelcome.open,nil,"native close releases owner")
+
+-- Native geometry must survive template callbacks and extra pages.
+install()
+local G=load("Native",true,nil,function(H)
+    H.spec.railButton={label="Back",run=function()end}
+    H.Settings:NewPage({name="Complex",description="A wrapped page description",tabs={
+        {name="First",build=function(_,y)return y end},
+        {name="Second",build=function(_,y)return y end}}})
+end)
+G.Settings:Show("Complex")
+for _,button in pairs(G.Settings.buttons)do button.Text.GetStringWidth=function()return 200 end end
+G.Settings:LayoutNativeNavigation()
+eq(G.Settings.nativeNavRows>1,true,"extra native pages wrap")
+local nav=G.Settings.buttons.General
+local width=nav:GetWidth()
+nav.scripts.OnShow(nav);nav.scripts.OnEvent(nav,"DISPLAY_SIZE_CHANGED")
+eq(nav:GetWidth(),width,"template callbacks retain owned navigation geometry")
+for _,spec in ipairs(G.Settings.order)do
+    local button=G.Settings.buttons[spec.name]
+    eq(button.points[1][2]+button:GetWidth()<=828,true,"wrapped tab remains within window")
+end
+eq(G.Settings.tabButtons[1].template,"PanelTopTabButtonTemplate","internal tabs use native art")
+eq(G.Settings.tabButtons[1].line:IsShown(),false,"internal tabs have no Modern underline")
+eq(G.Settings.tabButtons[1].Text.textColour[1],G.Theme.Colour("accent")[1],"active native subtab keeps gold label")
+eq(G.Settings.header:GetHeight()>=116,true,"internal tabs reserve header space")
+eq(G.Settings.railButton:GetParent(),G.Settings.footer,"optional rail action moves to footer")
+local probe=CreateFrame("Frame",nil,UIParent,"BackdropTemplate")
+probe.Center=probe:CreateTexture()
+probe.Center.SetDrawLayer=function(self,layer,level)self.drawLayer,self.drawLevel=layer,level end
+G.Theme.Surface(probe,"outer","edge")
+eq(probe.Center.drawLevel,-7,"client texture draws above opaque base")
+eq(probe.hcRaidBorder.tl:GetParent(),probe,"border remains behind child controls")
+local vertical=CreateFrame("Slider",nil,UIParent)
+G.Theme.SliderArt(vertical,vertical:CreateTexture(),vertical:CreateTexture(),true)
+eq(vertical.hcNativeGroove~=nil,true,"vertical scrollbar retains a native groove")
 
 -- Both registration orders preserve the old Modern aggregate and serialize notices.
 for _,nativeFirst in ipairs({true,false})do
