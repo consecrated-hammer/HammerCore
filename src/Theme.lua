@@ -96,18 +96,24 @@ Theme.registry = {
 
 Theme.order = { "modern", "classic" }
 
--- A scoped presentation, deliberately independent of the hidden saved theme.
+-- Whole-addon presentation, independent of the legacy settings-only theme.
 -- Resolve only once the addon's character database exists. Speedster's secure
 -- button is constructed before HC:Start, so Start alone is too late.
 local presentation
 function Theme.IsBlizzard()
     if presentation == nil and HC.spec and HC.spec.db and HC.spec.db() then
-        presentation = HC.spec.presentation == "blizzard"
+        local state = HC.State()
+        local choice = HC.spec.presentationSwitcher and state and state.presentation
+        if choice == "modern" or choice == "blizzard" then
+            presentation = choice == "blizzard"
+        else
+            presentation = HC.spec.presentation == "blizzard"
+        end
     end
     return presentation == true
 end
 
-local native = { label = "Blizzard", available = false, colours = {} }
+local native = { label = "Classic", available = false, colours = {} }
 for role, colour in pairs(Theme.registry.classic.colours) do native.colours[role] = colour end
 for _, role in ipairs({ "outer", "rail", "content", "header", "raised", "field", "menu" }) do
     native.colours[role] = { 1, 1, 1, 1 }
@@ -231,6 +237,7 @@ end
 -- effect after a reload, which keeps every control free of re-skin logic.
 function Theme.Active()
     if Theme.IsBlizzard() then return native, "blizzard" end
+    if HC.spec and HC.spec.presentationSwitcher then return Theme.registry.modern, "modern" end
     local state = HC.State and HC.spec and HC.State()
     local key = state and state.theme or "modern"
     local theme = Theme.registry[key]
@@ -389,7 +396,20 @@ function Theme.Code(role)
         math.floor(c[2] * 255 + 0.5), math.floor(c[3] * 255 + 0.5))
 end
 
+-- Saving does not change already-created or lazy UI until the next reload.
+function Theme.SetPresentation(key)
+    if not (HC.spec and HC.spec.presentationSwitcher) then return false, "style selection is not enabled" end
+    if key ~= "modern" and key ~= "blizzard" then return false, "unknown style" end
+    local state = HC.State()
+    if not state then return false, "settings are not ready" end
+    state.presentation = key
+    return true
+end
+
 function Theme.Set(key)
+    if HC.spec and HC.spec.presentationSwitcher then
+        return Theme.SetPresentation(key == "classic" and "blizzard" or key)
+    end
     if Theme.IsBlizzard() then return false, "this preview uses Blizzard presentation; reload the stable build to restore its appearance" end
     local theme = Theme.registry[key]
     if not theme then return false, "unknown theme" end

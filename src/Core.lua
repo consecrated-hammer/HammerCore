@@ -57,7 +57,8 @@ function HC.Command()
 end
 
 -- spec fields:
---   presentation             "blizzard" opts this addon into the complete native pilot
+--   presentation             default whole-addon artwork: "blizzard" for native
+--   presentationSwitcher     opt into per-character Modern / Classic with reload
 --   name, command            display name and primary slash command (no slash)
 --   aliases                  extra slash commands, never advertised
 --   savedVariable            the addon's SavedVariables global name

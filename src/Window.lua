@@ -457,6 +457,34 @@ function Settings:Create()
     scaleLabel:SetPoint("RIGHT", scale, "LEFT", -10, 0)
     scaleLabel:SetText("Window scale")
 
+    if HC.spec.presentationSwitcher then
+        local style = UI.Button(native and brand or header, 116, 22)
+        style:SetPoint("RIGHT", scaleLabel, "LEFT", -14, 0)
+        style:SetText("Style: " .. (native and "Classic" or "Modern"))
+        style.hcHeaderControl = true
+        if native then
+            title:ClearAllPoints()
+            title:SetPoint("LEFT", icon, "RIGHT", 12, 0)
+            title:SetPoint("RIGHT", style, "LEFT", -14, 0)
+            title:SetWordWrap(false)
+        end
+        local target, targetLabel = native and "modern" or "blizzard", native and "Modern" or "Classic"
+        UI.AttachHint(style, "Switch to " .. targetLabel,
+            "Change the whole addon's appearance. Requires a UI reload; your choice is remembered for this character.")
+        style:SetScript("OnClick", function()
+            HC.Dialog:Confirm({ title = "Switch to " .. targetLabel .. "?",
+                text = "Reload the UI to apply this style to all " .. HC.name .. " windows.",
+                accept = "Reload UI", cancel = "Cancel", onAccept = function()
+                    if InCombatLockdown and InCombatLockdown() then HC.Print("Leave combat before changing styles."); return end
+                    if not ReloadUI then HC.Print("Reload UI is unavailable."); return end
+                    local ok, reason = T.SetPresentation(target)
+                    if not ok then HC.Print(reason); return end
+                    ReloadUI()
+                end })
+        end)
+        self.styleButton = style
+    end
+
     -- A page's own action (spec.headerAction), such as opening a live
     -- preview, on the right of the header under the window controls.
     local action = UI.Button(header, 170, 24)
@@ -885,7 +913,7 @@ function Settings:Focus(name, setting, tab)
     if not row then return nil end
     -- Scroll so the row sits a little below the top of the view.
     local scroll, content = body.scroll, body.content
-    if scroll and content and row.GetTop and content.GetTop then
+    if not row.hcHeaderControl and scroll and content and row.GetTop and content.GetTop then
         local rowTop, contentTop = row:GetTop(), content:GetTop()
         if rowTop and contentTop then
             local range = scroll:GetVerticalScrollRange() or 0
@@ -1109,6 +1137,11 @@ end
 function Settings:LayoutHeaderTools()
     local header, action, box = self.header, self.headerAction, self.searchBox
     if not header then return end
+    if self.styleButton and not T.IsBlizzard() and self.pageTitle then
+        local tagWidth = self.profileTag and self.profileTag:IsShown() and (self.profileTag:GetWidth() + 14) or 0
+        self.pageTitle:SetWidth(math.max(1, (self.headerWidth or 0) - 440 - tagWidth))
+        self.pageTitle:SetWordWrap(false)
+    end
     local searchShown = box and box:IsShown()
     local actionShown = action and action:IsShown()
     local reserved = searchShown and (box:GetWidth() + 12) or 0

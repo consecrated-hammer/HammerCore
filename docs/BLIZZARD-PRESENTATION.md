@@ -1,12 +1,21 @@
 # Blizzard presentation
 
-`presentation = "blizzard"` in `HC:Init` opts one consumer into the complete
-native-artwork preview. Other consumers retain their existing theme. This is a
-build capability, not a saved preference or a public theme selector. Theme.lua
-resolves it after the consumer's database exists, including frames created
-before `HC:Start`, and fixes it for the session. Saved `hammerCore.theme` is
-preserved. Diagnostics report both values; the hidden theme command cannot
-claim to change the fixed preview.
+`presentation = "blizzard"` in `HC:Init` selects native artwork by default.
+Other consumers keep their existing theme. `presentationSwitcher = true`
+additionally enables a header button for Modern / Classic. Speedster opts in;
+Classic is the complete Party-panel treatment, not the old disabled settings
+palette. Missing or invalid saved choice uses the build default, so the staged
+native preview remains Classic on upgrade.
+
+The choice is saved per character under `hammerCore.presentation`, separately
+from preserved legacy `hammerCore.theme`. The session resolves after the live
+character database exists, including frames created before `HC:Start`, and
+stays frozen. Both early and lazy frames therefore share one presentation.
+Switching offers Reload UI / Cancel; cancel and combat rejection save nothing.
+Acceptance saves the selected style and reloads the UI. The hidden theme
+command also saves the choice for the next reload; it cannot partly reskin
+already-created windows. Consumers without the opt-in retain their previous
+contracts. The native update queue remains separate from Modern on each load.
 
 ## Artwork and geometry
 

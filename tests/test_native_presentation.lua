@@ -132,6 +132,57 @@ local vertical=CreateFrame("Slider",nil,UIParent)
 G.Theme.SliderArt(vertical,vertical:CreateTexture(),vertical:CreateTexture(),true)
 eq(vertical.hcNativeGroove~=nil,true,"vertical scrollbar retains a native groove")
 
+-- Whole-addon style selection is persisted separately and applied only on reload.
+install()
+local reloads=0
+ReloadUI=function()reloads=reloads+1 end
+local function switcher(H)H.spec.presentationSwitcher=true end
+local P,choice=load("Native",true,nil,switcher)
+P.Settings:Show("General")
+eq(P.Settings.styleButton:GetText(),"Style: Classic","default preserves the native preview")
+wow.Click(P.Settings.styleButton);wow.Click(P.Dialog.frame.cancel)
+eq(choice.hammerCore.presentation,nil,"cancel does not save a style")
+eq(reloads,0,"cancel does not reload")
+wow.Click(P.Settings.styleButton);combat=true;wow.Click(P.Dialog.frame.accept)
+eq(choice.hammerCore.presentation,nil,"combat does not save a style")
+eq(reloads,0,"combat does not reload")
+combat=false;wow.Click(P.Settings.styleButton);wow.Click(P.Dialog.frame.accept)
+eq(choice.hammerCore.presentation,"modern","accept saves Modern choice")
+eq(reloads,1,"accept requests one reload")
+eq(HC.Settings.styleButton,nil,"fixed preview still has no switch")
+eq(P.DiagnosticReport():find("Style: Classic; saved: Modern; reload to apply",1,true)~=nil,true,"diagnostics show pending whole-addon choice")
+eq(P.Theme.IsBlizzard(),true,"existing session stays Classic until reload")
+P.Copy:Show("Report","test")
+eq(P.Copy.frame.hcPresentation,"blizzard","lazy window stays with current session")
+eq(choice.hammerCore.theme,"modern","legacy preference preserved")
+-- Simulate reload into the same character's saved database.
+install();ReloadUI=function()reloads=reloads+1 end
+P=load("Native",true,choice,switcher)
+P.Settings:Show("General")
+eq(P.Theme.IsBlizzard(),false,"saved Modern applies on next session")
+eq(P.Settings.styleButton:GetText(),"Style: Modern","switch also exists in Modern")
+eq(P.Settings.window:GetWidth(),1000,"Modern uses the original settings shell")
+eq(P.Settings:Search("Classic")[1]~=nil,true,"style switch is searchable")
+choice.hammerCore.theme="classic"
+eq(select(2,P.Theme.Active()),"modern","Modern whole-addon style remains frozen")
+wow.Click(P.Settings.styleButton);wow.Click(P.Dialog.frame.accept)
+eq(choice.hammerCore.presentation,"blizzard","Modern can save Classic choice")
+eq(reloads,2,"reverse switch requests one reload")
+eq(P.Theme.IsBlizzard(),false,"reverse switch cannot partly reskin session")
+P.Copy:Show("Report","test")
+eq(P.Copy.frame.hcPresentation,nil,"Modern lazy dialog stays Modern until reload")
+install();P=load("Native",true,choice,switcher)
+eq(P.Theme.IsBlizzard(),true,"Classic restored on next session")
+eq(P.Theme.SetPresentation("unknown"),false,"invalid selection rejected")
+eq(P.Theme.Set("modern"),true,"hidden command saves the whole-addon choice")
+eq(P.Theme.IsBlizzard(),true,"hidden command is also reload-only")
+install();P=load("Native",true,{hammerCore={presentation="invalid"}},switcher)
+eq(P.Theme.IsBlizzard(),true,"invalid saved selection falls back to build default")
+install();P=load("Other",false,{hammerCore={presentation="blizzard"}})
+eq(P.Theme.IsBlizzard and P.Theme.IsBlizzard() or false,false,"non-opted-in peer ignores style preference")
+P.Settings:Show("General")
+eq(P.Settings.styleButton,nil,"non-opted-in consumer has no switch")
+
 -- Both registration orders preserve the old Modern aggregate and serialize notices.
 for _,nativeFirst in ipairs({true,false})do
     install()

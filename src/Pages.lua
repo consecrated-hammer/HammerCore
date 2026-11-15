@@ -66,6 +66,9 @@ Pages.visibility.build = function(panel, y)
             function() return HC.State().previewSnap ~= false end,
             function(value) HC.State().previewSnap = value; HC.Settings:RefreshPreviewDocks() end)
     end
+    if HC.Settings.styleButton then
+        UI.RegisterRow(panel, HC.Settings.styleButton, "Modern / Classic style")
+    end
     if HC.Settings.scaleSlider then
         UI.RegisterRow(panel, HC.Settings.scaleSlider, "Window scale")
         UI.AttachHint(HC.Settings.scaleSlider, "Window scale", "Resize the settings window from 70% to 130% using the header slider.")

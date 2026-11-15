@@ -255,6 +255,13 @@ function HC.DiagnosticReport()
             .. ", right-click " .. tostring(state.minimapRightClick or "menu"),
         "Theme: " .. tostring(select(2, HC.Theme.Active())) .. (HC.Theme.IsBlizzard() and (" (saved: " .. tostring(state.theme) .. ")") or ""),
     }
+    if HC.spec.presentationSwitcher then
+        local current = HC.Theme.IsBlizzard() and "blizzard" or "modern"
+        local saved = state.presentation or HC.spec.presentation or "modern"
+        local function styleName(key) return key == "blizzard" and "Classic" or key == "modern" and "Modern" or tostring(key) end
+        lines[#lines + 1] = "Style: " .. styleName(current) .. "; saved: " .. styleName(saved)
+            .. (saved ~= current and "; reload to apply" or "")
+    end
     if HC.WhatsNew and HC.WhatsNew.Enabled() then
         lines[#lines + 1] = "What's new: " .. (state.whatsNew == false and "off" or "on")
             .. ", last seen " .. tostring(state.whatsNewSeen or "none")
