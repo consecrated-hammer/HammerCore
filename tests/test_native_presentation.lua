@@ -289,4 +289,31 @@ eq(N.WhatsNew.frame:IsShown(),true,"first native owner opens")
 eq(T.WhatsNew.frame==nil,true,"second native owner waits")
 N.WhatsNew:Hide();eq(T.WhatsNew.frame:IsShown(),true,"second native owner follows")
 T.WhatsNew:Hide();eq(ConsecratedHammerWelcome.busy,0,"all native claims released")
+-- Dismissal survives a fresh login using only serialized SavedVariables.
+local function copySaved(value)
+    if type(value)~="table" then return value end
+    local result={};for key,item in pairs(value)do result[key]=copySaved(item)end;return result
+end
+for _,native in ipairs({true,false})do
+    install()
+    local name=native and "Native" or "Other"
+    local H,state=load(name,native)
+    tick()
+    eq(H.WhatsNew.frame:IsShown(),true,"unseen update opens before dismissal")
+    H.WhatsNew:Hide()
+    local persisted=copySaved(state)
+    install();H=load(name,native,persisted);tick()
+    eq(H.WhatsNew.frame==nil or not H.WhatsNew.frame:IsShown(),true,"dismissed update stays closed on fresh login")
+    eq(H.WhatsNew.nativeRequest,nil,"fresh login cannot requeue dismissed native update")
+    -- Still notify for an actual new release, then remain quiet after that dismissal.
+    install();H=load(name,native,persisted,function(core)
+        core.spec.whatsNew={{version="3.0.0",items={{text="A new update"}}},unpack(NOTES)}
+    end);tick()
+    eq(H.WhatsNew.frame:IsShown(),true,"newer release can notify again")
+    H.WhatsNew:Hide();persisted=copySaved(persisted)
+    install();H=load(name,native,persisted,function(core)
+        core.spec.whatsNew={{version="3.0.0",items={{text="A new update"}}},unpack(NOTES)}
+    end);tick()
+    eq(H.WhatsNew.frame==nil or not H.WhatsNew.frame:IsShown(),true,"new release also stays dismissed on next login")
+end
 io.write("Native presentation: "..checks.." checks passed\n")
