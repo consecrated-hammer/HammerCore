@@ -253,7 +253,7 @@ function HC.DiagnosticReport()
         "Startup message: " .. (state.startupMessage and "on" or "off"),
         "Minimap button: " .. (state.minimap and "shown" or "hidden")
             .. ", right-click " .. tostring(state.minimapRightClick or "menu"),
-        "Theme: " .. tostring(state.theme),
+        "Theme: " .. tostring(select(2, HC.Theme.Active())) .. (HC.Theme.IsBlizzard() and (" (saved: " .. tostring(state.theme) .. ")") or ""),
     }
     if HC.WhatsNew and HC.WhatsNew.Enabled() then
         lines[#lines + 1] = "What's new: " .. (state.whatsNew == false and "off" or "on")

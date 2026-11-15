@@ -96,9 +96,92 @@ Theme.registry = {
 
 Theme.order = { "modern", "classic" }
 
+-- A scoped presentation, deliberately independent of the hidden saved theme.
+-- Resolve only once the addon's character database exists. Speedster's secure
+-- button is constructed before HC:Start, so Start alone is too late.
+local presentation
+function Theme.IsBlizzard()
+    if presentation == nil and HC.spec and HC.spec.db and HC.spec.db() then
+        presentation = HC.spec.presentation == "blizzard"
+    end
+    return presentation == true
+end
+
+local native = { label = "Blizzard", available = false, colours = {} }
+for role, colour in pairs(Theme.registry.classic.colours) do native.colours[role] = colour end
+for _, role in ipairs({ "outer", "rail", "content", "header", "raised", "field", "menu" }) do
+    native.colours[role] = { 1, 1, 1, 1 }
+end
+native.colours.hover = { 1, 0.94, 0.75, 1 }
+native.colours.menuActive = { 1, 0.94, 0.75, 1 }
+Theme.registry.blizzard = native
+
+-- Artwork comes from the client; all frames remain owned by this addon.
+Theme.NATIVE = {
+    background = "Interface\\DialogFrame\\UI-DialogBox-Background",
+    dark = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
+    border = "Interface\\DialogFrame\\UI-DialogBox-Border",
+    inset = "Interface\\Tooltips\\UI-Tooltip-Background",
+    insetBorder = "Interface\\Tooltips\\UI-Tooltip-Border",
+    highlight = "Interface\\QuestFrame\\UI-QuestTitleHighlight",
+    check = "Interface\\Buttons\\UI-CheckBox-Check",
+    arrow = "Interface\\ChatFrame\\UI-ChatIcon-ScrollDown-Up",
+    thumb = "Interface\\Buttons\\UI-SliderBar-Button-Horizontal",
+    scrollThumb = "Interface\\Buttons\\UI-ScrollBar-Knob",
+    progress = "Interface\\TargetingFrame\\UI-StatusBar",
+}
+
+-- These helpers replace art without inheriting scripts or automatic toggles.
+function Theme.CheckArt(texture)
+    if not Theme.IsBlizzard() then return end
+    texture:SetTexture(Theme.NATIVE.check)
+    texture:SetVertexColor(1, 1, 1, 1)
+    texture:SetSize(18, 18)
+end
+
+function Theme.ButtonArt(button)
+    if not Theme.IsBlizzard() then return end
+    button:SetNormalTexture("Interface\\Buttons\\UI-Panel-Button-Up")
+    button:SetPushedTexture("Interface\\Buttons\\UI-Panel-Button-Down")
+    button:SetDisabledTexture("Interface\\Buttons\\UI-Panel-Button-Disabled")
+    button:SetHighlightTexture("Interface\\Buttons\\UI-Panel-Button-Highlight", "ADD")
+    for _, getter in ipairs({ "GetNormalTexture", "GetPushedTexture", "GetDisabledTexture", "GetHighlightTexture" }) do
+        local texture = button[getter] and button[getter](button)
+        if texture and texture.SetTexCoord then texture:SetTexCoord(0, 0.625, 0, 0.6875) end
+    end
+end
+
+function Theme.SliderArt(slider, thumb, track, vertical)
+    if not Theme.IsBlizzard() then return end
+    if track then track:SetTexture("Interface\\Buttons\\UI-SliderBar-Background"); track:SetVertexColor(1, 1, 1, 1) end
+    thumb:SetTexture(vertical and Theme.NATIVE.scrollThumb or Theme.NATIVE.thumb)
+    thumb:SetVertexColor(1, 1, 1, 1)
+    thumb:SetSize(vertical and 16 or 28, vertical and 24 or 28)
+    if vertical then slider:SetWidth(16) end
+end
+
+function Theme.IconBorder(icon, parent)
+    if not Theme.IsBlizzard() then return end
+    if parent.SetPushedTexture then
+        parent:SetPushedTexture("Interface\\Buttons\\UI-Quickslot-Depress")
+        parent:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+        for _, getter in ipairs({ "GetPushedTexture", "GetHighlightTexture" }) do
+            local texture = parent[getter] and parent[getter](parent)
+            if texture then texture:ClearAllPoints(); texture:SetAllPoints(icon) end
+        end
+    end
+    local border = parent:CreateTexture(nil, "OVERLAY")
+    border:SetTexture("Interface\\Buttons\\UI-Quickslot2")
+    border:SetPoint("TOPLEFT", icon, "TOPLEFT", -6, 6)
+    border:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 6, -6)
+    return border
+end
+
+
 -- The theme is fixed when the settings window is built.  Changing it takes
 -- effect after a reload, which keeps every control free of re-skin logic.
 function Theme.Active()
+    if Theme.IsBlizzard() then return native, "blizzard" end
     local state = HC.State and HC.spec and HC.State()
     local key = state and state.theme or "modern"
     local theme = Theme.registry[key]
@@ -117,7 +200,7 @@ function Theme.Unpack(role)
 end
 
 function Theme.IsClassic()
-    return select(2, Theme.Active()) == "classic"
+    return Theme.IsBlizzard() or select(2, Theme.Active()) == "classic"
 end
 
 -- A panel: background role plus an optional border role.  Modern draws a
@@ -125,6 +208,18 @@ end
 -- textured backdrop for bordered panels of that background role.
 function Theme.Surface(frame, background, border)
     if not frame.SetBackdrop then return frame end
+    if Theme.IsBlizzard() then
+        local outer = background == "outer"
+        local clear = background == "transparent"
+        frame:SetBackdrop({ bgFile = clear and Theme.NATIVE.highlight or (background == "field" or background == "menu") and Theme.NATIVE.inset or Theme.NATIVE.dark,
+            edgeFile = border and (outer and Theme.NATIVE.border or Theme.NATIVE.insetBorder) or nil,
+            tile = not clear, tileSize = 32, edgeSize = border and (outer and 32 or 8) or nil,
+            insets = { left = outer and 11 or 3, right = outer and 11 or 3, top = outer and 11 or 3, bottom = outer and 11 or 3 } })
+        frame:SetBackdropColor(Theme.Unpack(background))
+        if border then frame:SetBackdropBorderColor(1, 1, 1, 1) end
+        frame.hcPresentation = "blizzard"
+        return frame
+    end
     local theme = Theme.Active()
     local framed = border and theme.surfaces and theme.surfaces[background]
     if framed then
@@ -142,10 +237,22 @@ function Theme.Surface(frame, background, border)
 end
 
 function Theme.Border(frame, border)
+    if Theme.IsBlizzard() then
+        if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(1, 1, 1, 1) end
+        return
+    end
     if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(Theme.Unpack(border)) end
 end
 
 function Theme.Fill(texture, role)
+    if Theme.IsBlizzard() then
+        local background = role == "rail" or role == "header" or role == "content" or role == "outer" or role == "field"
+        texture:SetTexture(background and Theme.NATIVE.dark or Theme.NATIVE.highlight)
+        if role == "stripe" or role == "transparent" then texture:SetVertexColor(1, 1, 1, 0)
+        elseif background then texture:SetVertexColor(1, 1, 1, 1)
+        else texture:SetVertexColor(Theme.Unpack(role)) end
+        return texture
+    end
     texture:SetColorTexture(Theme.Unpack(role))
     return texture
 end
@@ -163,6 +270,11 @@ end
 
 -- A tinted HammerCore texture.
 function Theme.Icon(texture, name, role)
+    if Theme.IsBlizzard() then
+        local file = name == "Chevron.tga" and Theme.NATIVE.arrow or name == "Circle.tga" and Theme.NATIVE.check
+        if file then texture:SetTexture(file); texture:SetVertexColor(1, 1, 1, 1); return texture end
+        if name == "Fade.tga" then texture:SetTexture(Theme.NATIVE.dark); texture:SetAlpha(0); return texture end
+    end
     texture:SetTexture(Theme.Media(name))
     if role and texture.SetVertexColor then texture:SetVertexColor(Theme.Unpack(role)) end
     return texture
@@ -184,6 +296,7 @@ function Theme.Code(role)
 end
 
 function Theme.Set(key)
+    if Theme.IsBlizzard() then return false, "this preview uses Blizzard presentation; reload the stable build to restore its appearance" end
     local theme = Theme.registry[key]
     if not theme then return false, "unknown theme" end
     if not theme.available then return false, theme.label .. " is not available yet" end

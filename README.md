@@ -441,3 +441,7 @@ to the slider range and step. Half-column cells use a shorter track. Optional
 last argument `inputScale` keeps display units consistent while editing: use
 `100` for a percentage formatter backed by a 0..1 value. Existing callers
 remain compatible and default to raw numeric units.
+
+## Blizzard presentation preview
+
+Consumers may opt into the complete native-artwork preview with `presentation = "blizzard"` in their Init spec. It is fixed for the session and preserves saved theme choices. See [the presentation contract and artwork manifest](docs/BLIZZARD-PRESENTATION.md).

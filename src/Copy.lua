@@ -17,6 +17,10 @@ function Copy:Create()
     frame:EnableMouse(true)
     T.Surface(frame, "outer", "edge")
     frame:Hide()
+    if T.IsBlizzard() then
+        local x = UI.CloseButton(frame, function() frame:Hide() end)
+        x:SetPoint("TOPRIGHT", -5, -5)
+    end
 
     frame.title = UI.FontString(frame, "GameFontNormalLarge")
     frame.title:SetPoint("TOPLEFT", 18, -16)

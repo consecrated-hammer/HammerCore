@@ -129,7 +129,7 @@ local function open(spec, prompt)
     f.logo:SetShown(logo ~= nil)
     if logo then f.logo:SetTexture(logo) end
     local badge = logo and spec.icon or nil
-    f.badgeBack:SetShown(badge ~= nil)
+    f.badgeBack:SetShown(badge ~= nil and not T.IsBlizzard())
     f.badge:SetShown(badge ~= nil)
     if badge then T.Icon(f.badge, badge, "accent") end
     local indent = logo and 60 or 16

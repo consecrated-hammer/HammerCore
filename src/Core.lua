@@ -8,7 +8,7 @@ local addonName, ns = ...
 local HC = {}
 ns.HammerCore = HC
 
-HC.VERSION = "0.5.3"
+HC.VERSION = "0.5.4"
 HC.addonName = addonName
 
 -- The one chat colour every addon uses for its name prefix.
@@ -57,6 +57,7 @@ function HC.Command()
 end
 
 -- spec fields:
+--   presentation             "blizzard" opts this addon into the complete native pilot
 --   name, command            display name and primary slash command (no slash)
 --   aliases                  extra slash commands, never advertised
 --   savedVariable            the addon's SavedVariables global name

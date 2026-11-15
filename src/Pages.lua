@@ -394,6 +394,7 @@ local function releaseCard(panel, release, newest, relayout)
     stripe:SetPoint("TOPLEFT")
     stripe:SetPoint("BOTTOMLEFT")
     stripe:SetWidth(3)
+    if T.IsBlizzard() then stripe:SetAlpha(0) end
     stripe:SetShown(newest)
     local icon = head:CreateTexture(nil, "ARTWORK")
     icon:SetSize(24, 24)

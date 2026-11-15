@@ -85,9 +85,11 @@ local function createBody(page, build, columns, top)
     bar:SetWidth(4)
     bar:SetPoint("TOPRIGHT", body, "TOPRIGHT", -8, contentTop)
     bar:SetPoint("BOTTOMRIGHT", body, "BOTTOMRIGHT", -8, 8)
-    T.Fill(bar:CreateTexture(nil, "BACKGROUND"), "edge"):SetAllPoints()
+    local track = T.Fill(bar:CreateTexture(nil, "BACKGROUND"), "edge")
+    track:SetAllPoints()
     local thumb = T.Fill(bar:CreateTexture(nil, "ARTWORK"), "accent")
     thumb:SetSize(4, 36)
+    T.SliderArt(bar, thumb, track, true)
     if bar.SetThumbTexture then bar:SetThumbTexture(thumb) end
 
     local content = CreateFrame("Frame", nil, scroll)
@@ -229,6 +231,12 @@ end
 -- The square close button: a bordered box with an X.  Shared as
 -- UI.CloseButton(parent, onClick, size) for an addon's own windows.
 function UI.CloseButton(parent, onClick, size)
+    if T.IsBlizzard() then
+        local close = CreateFrame("Button", nil, parent, "UIPanelCloseButton")
+        close:SetSize(size or 32, size or 32)
+        close:SetScript("OnClick", onClick)
+        return close
+    end
     local close = CreateFrame("Button", nil, parent, "BackdropTemplate")
     close:SetSize(size or 30, size or 30)
     T.Surface(close, "raised", "edge")
@@ -296,10 +304,12 @@ function Settings:Create()
     if self.window then return self.window end
     local size = HC.spec.window or {}
     local state = HC.State()
-    local width = math.max(size.width or 0, MIN_WIDTH)
+    local native = T.IsBlizzard()
+    local inset = native and 12 or 1
+    local width = math.max(size.width or 0, MIN_WIDTH + (native and 40 or 0))
     local height = math.max(size.height or 0, MIN_HEIGHT)
     -- Settings fill the space between the rail and the scroll bar.
-    UI.CONTENT_WIDTH = width - RAIL_WIDTH - UI.PAD * 2 - 22
+    UI.CONTENT_WIDTH = width - RAIL_WIDTH - UI.PAD * 2 - 22 - (native and 22 or 0)
 
     local frame = CreateFrame("Frame", HC.FrameName("SettingsFrame"), UIParent, "BackdropTemplate")
     frame:SetSize(width, height)
@@ -324,14 +334,15 @@ function Settings:Create()
 
     -- ── Rail: brand, page list, version ──
     local rail = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-    rail:SetPoint("TOPLEFT", 1, -1)
-    rail:SetPoint("BOTTOMLEFT", 1, 1)
+    rail:SetPoint("TOPLEFT", inset, -inset)
+    rail:SetPoint("BOTTOMLEFT", inset, inset)
     rail:SetWidth(RAIL_WIDTH)
     T.Surface(rail, "rail")
     local railEdge = T.Fill(frame:CreateTexture(nil, "ARTWORK"), "edge")
     railEdge:SetPoint("TOPLEFT", RAIL_WIDTH + 1, -1)
     railEdge:SetPoint("BOTTOMLEFT", RAIL_WIDTH + 1, 1)
     railEdge:SetWidth(1)
+    if native then railEdge:Hide() end
 
     local brand = CreateFrame("Button", nil, rail)
     brand:SetPoint("TOPLEFT", 0, 0)
@@ -342,7 +353,7 @@ function Settings:Create()
     icon:SetSize(40, 40)
     icon:SetPoint("LEFT", 20, 0)
     icon:SetTexture(HC.spec.icon)
-    local title = T.Font(UI.FontString(brand, "GameFontNormalLarge", "text"), 20)
+    local title = T.Font(UI.FontString(brand, "GameFontNormalLarge", native and "accent" or "text"), native and 18 or 20)
     title:SetPoint("LEFT", icon, "RIGHT", 12, 0)
     title:SetPoint("RIGHT", -12, 0)
     title:SetJustifyH("LEFT")
@@ -358,25 +369,26 @@ function Settings:Create()
     self.versionText = version
 
     -- ── Header band: title, description, scale, close, tabs ──
-    local header = CreateFrame("Frame", nil, frame)
-    self.header, self.headerWidth = header, width - RAIL_WIDTH - 3
-    header:SetPoint("TOPLEFT", RAIL_WIDTH + 2, -1)
-    header:SetPoint("TOPRIGHT", -1, -1)
+    local header = CreateFrame("Frame", nil, frame, native and "BackdropTemplate" or nil)
+    self.header, self.headerWidth = header, width - RAIL_WIDTH - 3 - (native and 22 or 0)
+    header:SetPoint("TOPLEFT", RAIL_WIDTH + (native and 12 or 2), -inset)
+    header:SetPoint("TOPRIGHT", -inset, -inset)
     header:SetHeight(HEADER_HEIGHT)
-    T.Fill(header:CreateTexture(nil, "BACKGROUND"), "header"):SetAllPoints()
+    if native then T.Surface(header, "header")
+    else T.Fill(header:CreateTexture(nil, "BACKGROUND"), "header"):SetAllPoints() end
     local shade = T.Icon(header:CreateTexture(nil, "BORDER"), "Fade.tga", "outer")
     shade:SetPoint("BOTTOMLEFT")
     shade:SetPoint("BOTTOMRIGHT")
     shade:SetHeight(HEADER_HEIGHT / 2)
     if shade.SetTexCoord then shade:SetTexCoord(0, 1, 1, 0) end
-    shade:SetAlpha(0.35)
+    shade:SetAlpha(native and 0 or 0.35)
     local headerRule = T.Fill(header:CreateTexture(nil, "ARTWORK"), "edge")
     headerRule:SetPoint("BOTTOMLEFT")
     headerRule:SetPoint("BOTTOMRIGHT")
     headerRule:SetHeight(1)
     dragFrom(header)
 
-    local pageTitle = T.Font(UI.FontString(header, "GameFontNormalLarge", "text"), 26)
+    local pageTitle = T.Font(UI.FontString(header, "GameFontNormalLarge", native and "accent" or "text"), native and 22 or 26)
     pageTitle:SetPoint("TOPLEFT", UI.PAD + 4, -20)
     local pageDescription = UI.FontString(header, "GameFontHighlightSmall", "muted")
     pageDescription:SetPoint("TOPLEFT", pageTitle, "BOTTOMLEFT", 1, -8)
@@ -421,6 +433,7 @@ function Settings:Create()
     scaleTrack:SetHeight(3)
     local scaleThumb = T.Icon(scale:CreateTexture(nil, "OVERLAY"), "Circle.tga", "accent")
     scaleThumb:SetSize(12, 12)
+    T.SliderArt(scale, scaleThumb, scaleTrack)
     if scale.SetThumbTexture then scale:SetThumbTexture(scaleThumb) end
     local scaleLabel = UI.FontString(header, "GameFontHighlightSmall", "muted")
     scaleLabel:SetPoint("RIGHT", scale, "LEFT", -10, 0)
@@ -458,11 +471,12 @@ function Settings:Create()
     self.tabBar = tabBar
 
     -- ── Footer: support links, close; Reload UI only when one is needed ──
-    local footer = CreateFrame("Frame", nil, frame)
-    footer:SetPoint("BOTTOMLEFT", RAIL_WIDTH + 2, 1)
-    footer:SetPoint("BOTTOMRIGHT", -1, 1)
+    local footer = CreateFrame("Frame", nil, frame, native and "BackdropTemplate" or nil)
+    footer:SetPoint("BOTTOMLEFT", RAIL_WIDTH + (native and 12 or 2), inset)
+    footer:SetPoint("BOTTOMRIGHT", -inset, inset)
     footer:SetHeight(FOOTER_HEIGHT)
-    T.Fill(footer:CreateTexture(nil, "BACKGROUND"), "rail"):SetAllPoints()
+    if native then T.Surface(footer, "rail")
+    else T.Fill(footer:CreateTexture(nil, "BACKGROUND"), "rail"):SetAllPoints() end
     local footerRule = T.Fill(footer:CreateTexture(nil, "ARTWORK"), "edge")
     footerRule:SetPoint("TOPLEFT")
     footerRule:SetPoint("TOPRIGHT")
@@ -482,9 +496,11 @@ function Settings:Create()
     local links = self:Links()
     for index = #links, 1, -1 do
         local link = links[index]
-        local button = iconButton(footer, 26, link.icon or "Discord.tga", link.label, link.hint)
+        local button = native and UI.Link(footer, link.label, function() Settings:OpenLink(link) end, "GameFontHighlightSmall")
+            or iconButton(footer, 26, link.icon or "Discord.tga", link.label, link.hint)
         button:SetPoint("RIGHT", anchor, "LEFT", anchor == done and -24 or -16, 0)
         button:SetScript("OnClick", function() Settings:OpenLink(link) end)
+        if native then UI.AttachHint(button, link.label, link.hint); button:SetHeight(24) end
         button.link = link
         self.linkButtons[#self.linkButtons + 1] = button
         anchor = button
@@ -492,17 +508,18 @@ function Settings:Create()
     self.footer, self.reloadButton, self.closeButton = footer, reload, done
 
     -- ── Pages ──
-    local host = CreateFrame("Frame", nil, frame)
+    local host = CreateFrame("Frame", nil, frame, native and "BackdropTemplate" or nil)
     host:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, 0)
     host:SetPoint("BOTTOMRIGHT", footer, "TOPRIGHT", 0, 0)
-    T.Fill(host:CreateTexture(nil, "BACKGROUND"), "content"):SetAllPoints()
+    if native then T.Surface(host, "content")
+    else T.Fill(host:CreateTexture(nil, "BACKGROUND"), "content"):SetAllPoints() end
     -- A faint watermark of the addon's logo gives the page some depth.
     local watermark = host:CreateTexture(nil, "BORDER")
     watermark:SetTexture(HC.spec.icon)
     watermark:SetSize(320, 320)
     watermark:SetPoint("CENTER", 0, 0)
     if watermark.SetDesaturated then watermark:SetDesaturated(true) end
-    watermark:SetAlpha(0.035)
+    watermark:SetAlpha(native and 0 or 0.035)
 
     self.window, self.host, self.rail, self.header = frame, host, rail, header
     self.order = self:Ordered()
@@ -545,7 +562,8 @@ function Settings:Create()
         button.activeBar = T.Fill(button:CreateTexture(nil, "ARTWORK"), "accent")
         button.activeBar:SetPoint("TOPLEFT")
         button.activeBar:SetPoint("BOTTOMLEFT")
-        button.activeBar:SetWidth(3)
+        button.activeBar:SetWidth(native and 0.01 or 3)
+        if native then button.activeBar:SetAlpha(0); button.hover:SetTexture(T.NATIVE.highlight); button.hover:SetVertexColor(1, 1, 1, 0.35) end
         button:SetScript("OnEnter", function(self) self.hover:Show() end)
         button:SetScript("OnLeave", function(self) self.hover:Hide() end)
         local name = spec.name

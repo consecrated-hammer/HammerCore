@@ -97,6 +97,7 @@ end
 -- A row's stripe: the full content width from the row's left edge, so a
 -- left cell also paints behind its right-hand neighbour.
 local function stripe(row, slot, height)
+    if T.IsBlizzard() then return end
     if not (slot and slot.left) then return end
     local fill = row:CreateTexture(nil, "BACKGROUND")
     T.Fill(fill, slot.stripe % 2 == 1 and "stripe" or "content")
@@ -164,6 +165,7 @@ function UI.CheckButton(parent)
         btn:SetSize(22, 22)
         btn:SetNormalTexture("Interface\\Buttons\\UI-CheckBox-Up")
         btn:SetHighlightTexture("Interface\\Buttons\\UI-CheckBox-Highlight", "ADD")
+        if T.IsBlizzard() then btn:SetPushedTexture("Interface\\Buttons\\UI-CheckBox-Down") end
         btn.check = btn:CreateTexture(nil, "ARTWORK")
         btn.check:SetTexture("Interface\\Buttons\\UI-CheckBox-Check")
         btn.check:SetAllPoints()
@@ -190,6 +192,27 @@ end
 -- An on/off switch: a pill track with a round knob.  The button covers its
 -- whole cell, so clicking the label works too; .Text is that label.
 function UI.Switch(parent)
+    if T.IsBlizzard() then
+        local btn = CreateFrame("Button", nil, parent)
+        local check = UI.CheckButton(btn)
+        check:SetPoint("RIGHT", -UI.CELL_INSET, 0)
+        check:EnableMouse(false)
+        btn.Text = UI.FontString(btn)
+        btn.Text:SetPoint("LEFT", UI.CELL_INSET, 0)
+        btn.Text:SetPoint("RIGHT", check, "LEFT", -8, 0)
+        btn.Text:SetJustifyH("LEFT")
+        btn.nativeCheck = check
+        btn.SetChecked = function(self, value) self.checked = value and true or false; check:SetChecked(self.checked) end
+        btn.GetChecked = function(self) return self.checked end
+        local setEnabled = btn.SetEnabled
+        btn.SetEnabled = function(self, enabled)
+            setEnabled(self, enabled)
+            check:SetAlpha(enabled and 1 or 0.4)
+            T.Text(self.Text, enabled and "text" or "muted")
+        end
+        btn:SetChecked(false)
+        return btn
+    end
     local btn = CreateFrame("Button", nil, parent)
     btn.Text = UI.FontString(btn)
     btn.Text:SetPoint("LEFT", UI.CELL_INSET, 0)
@@ -290,7 +313,7 @@ end
 
 local function chevron(button)
     local arrow = T.Icon(button:CreateTexture(nil, "OVERLAY"), "Chevron.tga", "muted")
-    arrow:SetSize(12, 12)
+    arrow:SetSize(T.IsBlizzard() and 20 or 12, T.IsBlizzard() and 20 or 12)
     arrow:SetPoint("RIGHT", -10, 0)
     button.chevron = arrow
 end
@@ -320,6 +343,10 @@ end
 -- closes it when the player clicks anywhere else, without polling the mouse.
 -- choices() returns values, labels; it is re-read on every open so session
 -- state (chat windows, known spells) stays current.
+local function popupFrame(parent)
+    return CreateFrame("Frame", nil, parent, "BackdropTemplate")
+end
+
 local function popupMenu(button, choices, get, pick)
     local menu, dismiss, items = nil, nil, {}
     local function paint(item, active, hovered)
@@ -334,7 +361,7 @@ local function popupMenu(button, choices, get, pick)
         dismiss:SetFrameLevel(199)
         dismiss:SetAllPoints(UIParent)
         dismiss:EnableMouse(true)
-        menu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        menu = popupFrame(UIParent)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
         menu:SetFrameLevel(200)
         menu:SetClampedToScreen(true)
@@ -357,8 +384,13 @@ local function popupMenu(button, choices, get, pick)
                 item.activeBar:SetPoint("TOPLEFT")
                 item.activeBar:SetPoint("BOTTOMLEFT")
                 item.activeBar:SetWidth(3)
+                if T.IsBlizzard() then
+                    T.CheckArt(item.activeBar)
+                    item.activeBar:ClearAllPoints()
+                    item.activeBar:SetPoint("LEFT", 4, 0)
+                end
                 item.label = UI.FontString(item, "GameFontHighlightSmall")
-                item.label:SetPoint("LEFT", 10, 0)
+                item.label:SetPoint("LEFT", T.IsBlizzard() and 26 or 10, 0)
                 item.label:SetPoint("RIGHT", -8, 0)
                 item.label:SetJustifyH("LEFT")
                 if item.label.SetWordWrap then item.label:SetWordWrap(false) end
@@ -579,6 +611,7 @@ function UI.Slider(panel, label, hint, y, minV, maxV, step, get, set, fmt, width
         local thumb = s:CreateTexture(nil, "OVERLAY")
         thumb:SetTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
         thumb:SetSize(32, 32)
+        T.SliderArt(s, thumb)
         if s.SetThumbTexture then s:SetThumbTexture(thumb) end
         fill = s:CreateTexture(nil, "ARTWORK")
         fill:Hide()
@@ -783,7 +816,7 @@ local function checklist(btn, panel, spec, render)
         dismiss:SetFrameLevel(199)
         dismiss:SetAllPoints(UIParent)
         dismiss:EnableMouse(true)
-        menu = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        menu = popupFrame(UIParent)
         menu:SetFrameStrata("FULLSCREEN_DIALOG")
         menu:SetFrameLevel(200)
         menu:SetClampedToScreen(true)
@@ -914,7 +947,7 @@ function UI.SearchPicker(panel, label, hint, y, spec, width, offset)
         dismiss:SetFrameLevel(199)
         dismiss:SetAllPoints(UIParent)
         dismiss:EnableMouse(true)
-        list = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
+        list = popupFrame(UIParent)
         list:SetFrameStrata("FULLSCREEN_DIALOG")
         list:SetFrameLevel(200)
         list:SetClampedToScreen(true)

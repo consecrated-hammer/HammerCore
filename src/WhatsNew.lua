@@ -257,6 +257,101 @@ local function shared()
     return registry
 end
 
+-- Private native notices coordinate with older copies through Welcome's
+-- existing open/queue/busy protocol. They never register an aggregate renderer.
+local function nativeQueue()
+    local registry = _G.ConsecratedHammerWelcome
+    if type(registry) ~= "table" then registry = {}; _G.ConsecratedHammerWelcome = registry end
+    registry.queue = registry.queue or {}
+    registry.busy = registry.busy or 0
+    registry.nativeNotices = registry.nativeNotices or {}
+    return registry
+end
+
+local function otherNewsShown()
+    for _, name in ipairs(UISpecialFrames or {}) do
+        local frame = type(name) == "string" and name:sub(-8) == "WhatsNew" and _G[name]
+        if frame and frame ~= WhatsNew.frame and frame.sections and frame:IsShown() then return true end
+    end
+    return false
+end
+
+function WhatsNew:ReleaseNative(keepRequest)
+    local registry = nativeQueue()
+    if registry.open == addonName .. ":news" then registry.open = nil end
+    if self.nativeClaimed then registry.busy = math.max(0, registry.busy - 1) end
+    registry.nativeNotices[addonName] = nil
+    self.nativeClaimed, self.nativeShowing = nil, nil
+    if not keepRequest then self.nativeRequest = nil end
+    if HC.Welcome then HC.Welcome.Next() end
+end
+
+function WhatsNew:RetryNative()
+    if self.nativeRetry or not C_Timer or not C_Timer.After then return end
+    self.nativeRetry = true
+    C_Timer.After(1, function()
+        WhatsNew.nativeRetry = nil
+        WhatsNew:TryNative()
+    end)
+end
+
+function WhatsNew:TryNative()
+    local request = self.nativeRequest
+    if not request then
+        if not self.nativeShowing and HC.Welcome then HC.Welcome.Next() end
+        return false
+    end
+    if InCombatLockdown and InCombatLockdown() then return false end
+    if request.automatic and not request.section.isEnabled() then self:ReleaseNative(); return false end
+    local registry = nativeQueue()
+    local nativeClaims = 0
+    for _ in pairs(registry.nativeNotices) do nativeClaims = nativeClaims + 1 end
+    if registry.open ~= addonName .. ":news" and (registry.open or registry.busy > nativeClaims) then
+        if not self.nativeQueued then
+            self.nativeQueued = true
+            registry.queue[#registry.queue + 1] = function()
+                WhatsNew.nativeQueued = nil
+                WhatsNew:TryNative()
+            end
+        end
+        return false
+    end
+    -- Older aggregate windows do not expose an open flag. Their named escape
+    -- frames let us wait without altering the old renderer or its callbacks.
+    if otherNewsShown() then self:RetryNative(); return false end
+    if not self.nativeClaimed then registry.busy = registry.busy + 1; self.nativeClaimed = true; registry.nativeNotices[addonName] = true end
+    registry.open = addonName .. ":news"
+    self.nativeRendering = true
+    local ok, shown = pcall(self.ShowSections, self, { request.section })
+    self.nativeRendering = nil
+    if not ok or not shown then
+        self.nativeError = tostring(shown)
+        self.nativeAttempts = (self.nativeAttempts or 0) + 1
+        self.nativeRendering = true
+        if self.frame then self.frame:Hide() end
+        self.nativeRendering = nil
+        local retry = self.nativeAttempts < 2
+        self:ReleaseNative(retry)
+        if retry then self:RetryNative()
+        else HC.Print("update notice could not open; try " .. HC.Command() .. " whatsnew") end
+        return false
+    end
+    self.nativeRequest, self.nativeShowing, self.nativeError = nil, true, nil
+    if request.section.onShown then pcall(request.section.onShown) end
+    return true
+end
+
+function WhatsNew:RequestNative(section, automatic)
+    self.nativeRequest = { section = section, automatic = automatic }
+    self.nativeAttempts = 0
+    local registry = nativeQueue()
+    if not self.nativeClaimed then registry.busy = registry.busy + 1; self.nativeClaimed = true; registry.nativeNotices[addonName] = true end
+    self.registered = true
+    self:Schedule()
+    if not automatic then self:TryNative() end
+    return true
+end
+
 -- Called from HC:Start.  Decides once per session whether to show anything.
 -- A welcome window opening at login (Welcome.lua) replaces the popup.
 function WhatsNew:Check()
@@ -290,6 +385,13 @@ function WhatsNew:Check()
         return
     end
 
+    if T.IsBlizzard() then
+        self:RequestNative(self:Section(unseen, function()
+            local live = HC.State()
+            if live then WhatsNew:MarkSeen(live, mark) end
+        end), true)
+        return
+    end
     local registry = shared()
     registry.sections[#registry.sections + 1] = self:Section(unseen, function()
         local live = HC.State()
@@ -310,6 +412,7 @@ end
 -- Any copy may get here first; the registry makes sure the window opens once
 -- with every addon's section.
 function WhatsNew:TryShow()
+    if T.IsBlizzard() then return self:TryNative() end
     if not self.registered then return end
     self:Flush()
 end
@@ -428,7 +531,7 @@ function WhatsNew.DrawItems(parent, x, y, width, release, opts)
             for _, item in ipairs(items) do
                 if kind.key == "fix" then
                     local dot = T.Icon(parent:CreateTexture(nil, "ARTWORK"), "Circle.tga", "accent")
-                    dot:SetSize(5, 5)
+                    dot:SetSize(T.IsBlizzard() and 14 or 5, T.IsBlizzard() and 14 or 5)
                     dot:SetPoint("TOPLEFT", x + 6, y - 5)
                     local line = UI.FontString(parent, "GameFontHighlightSmall")
                     line:SetPoint("TOPLEFT", x + 18, y)
@@ -497,6 +600,13 @@ function WhatsNew:Create()
     frame:SetScript("OnDragStop", function(self) self:StopMovingOrSizing() end)
     T.Surface(frame, "outer", "edge")
     frame:Hide()
+    if T.IsBlizzard() then
+        frame:HookScript("OnHide", function()
+            if not WhatsNew.nativeRendering then WhatsNew:ReleaseNative() end
+        end)
+        local x = UI.CloseButton(frame, function() frame:Hide() end)
+        x:SetPoint("TOPRIGHT", -5, -5)
+    end
 
     frame.icon = frame:CreateTexture(nil, "ARTWORK")
     frame.icon:SetSize(26, 26)
@@ -605,6 +715,10 @@ end
 function WhatsNew:Show(releases)
     releases = releases or self:Releases()
     if #releases == 0 then return false end
+    if T.IsBlizzard() then
+        local mark = later(WhatsNew.Base(HC.VERSION_TEXT), releases[1] and releases[1].version)
+        return self:RequestNative(self:Section(releases, function() self:MarkSeen(HC.State(), mark) end), false)
+    end
     return self:ShowSections({ self:Section(releases) })
 end
 
