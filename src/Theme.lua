@@ -256,9 +256,10 @@ function Theme.Border(frame, border)
             end
         end
         frame.hcNativeFeedbackRole = active and border or nil
-        if frame.Text then
-            if active then Theme.Text(frame.Text, border)
-            elseif frame.hcNativeTextColour then frame.Text:SetTextColor(unpack(frame.hcNativeTextColour)) end
+        local label = rawget(frame, "Text")
+        if label then
+            if active then Theme.Text(label, border)
+            elseif frame.hcNativeTextColour then label:SetTextColor(unpack(frame.hcNativeTextColour)) end
         end
         return
     end
