@@ -239,6 +239,27 @@ end
 function Theme.Border(frame, border)
     if Theme.IsBlizzard() then
         if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(1, 1, 1, 1) end
+        -- Selection and quiz verdicts must remain visible even on native panel
+        -- buttons, which may not expose SetBackdropBorderColor at all.
+        local active = border == "accent" or border == "selected" or border == "danger"
+        if active and not frame.hcNativeFeedback then
+            local glow = frame:CreateTexture(nil, "OVERLAY")
+            glow:SetTexture(Theme.NATIVE.highlight)
+            glow:SetAllPoints()
+            frame.hcNativeFeedback = glow
+        end
+        if frame.hcNativeFeedback then
+            frame.hcNativeFeedback:SetShown(active)
+            if active then
+                local colour = Theme.Colour(border)
+                frame.hcNativeFeedback:SetVertexColor(colour[1], colour[2], colour[3], 0.35)
+            end
+        end
+        frame.hcNativeFeedbackRole = active and border or nil
+        if frame.Text then
+            if active then Theme.Text(frame.Text, border)
+            elseif frame.hcNativeTextColour then frame.Text:SetTextColor(unpack(frame.hcNativeTextColour)) end
+        end
         return
     end
     if frame.SetBackdropBorderColor then frame:SetBackdropBorderColor(Theme.Unpack(border)) end

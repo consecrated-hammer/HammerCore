@@ -50,9 +50,15 @@ Scheduling extends the existing `ConsecratedHammerWelcome` open/queue/busy
 protocol. A native request owns one busy claim and records it under the
 additive `nativeNotices` key. Actual Welcome claims take precedence, including
 welcomes waiting to open. Additional native notices queue behind an open owner.
+Native selection/quiz verdicts use a quest-highlight overlay and label colour,
+without tinting frame border art. Neutral states clear both.
+
 The claim is released on close, opt-out or failure; seen callbacks run only
 after a successful showing. A manual request replaces its own pending automatic
-request, leaving other addons' entries alone. Failed renders retry once and
+request and inherits that request’s seen callback, leaving other addons’ entries
+alone. Standalone manual views do not advance the automatic seen record.
+A repeated Show raises an already-visible window; a distinct request deferred
+by combat survives closing that prior window. Failed renders retry once and
 then release with a diagnostic message; later manual requests can recover.
 
 Older aggregate windows expose no open flag. Their visible named escape frames

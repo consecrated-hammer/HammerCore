@@ -602,7 +602,11 @@ function WhatsNew:Create()
     frame:Hide()
     if T.IsBlizzard() then
         frame:HookScript("OnHide", function()
-            if not WhatsNew.nativeRendering then WhatsNew:ReleaseNative() end
+            if not WhatsNew.nativeRendering then
+                local pending = WhatsNew.nativeRequest ~= nil
+                WhatsNew:ReleaseNative(pending)
+                if pending then WhatsNew:TryNative() end
+            end
         end)
         local x = UI.CloseButton(frame, function() frame:Hide() end)
         x:SetPoint("TOPRIGHT", -5, -5)
@@ -713,11 +717,17 @@ end
 
 -- This addon only: every release with highlights, or the given ones.
 function WhatsNew:Show(releases)
+    if T.IsBlizzard() and not releases and self.nativeShowing and self.frame and self.frame:IsShown() then
+        self.frame:Raise()
+        return true
+    end
+    -- Only a pending automatic notice transfers its seen callback. An ordinary
+    -- manual visit keeps the same seen-record semantics as Modern.
+    local onShown = not releases and self.nativeRequest and self.nativeRequest.automatic and self.nativeRequest.section.onShown or nil
     releases = releases or self:Releases()
     if #releases == 0 then return false end
     if T.IsBlizzard() then
-        local mark = later(WhatsNew.Base(HC.VERSION_TEXT), releases[1] and releases[1].version)
-        return self:RequestNative(self:Section(releases, function() self:MarkSeen(HC.State(), mark) end), false)
+        return self:RequestNative(self:Section(releases, onShown), false)
     end
     return self:ShowSections({ self:Section(releases) })
 end

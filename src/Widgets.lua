@@ -303,6 +303,10 @@ function UI.Button(parent, width, height, variant)
             T.Border(self, border)
         end)
     end
+    if T.IsBlizzard() then
+        local colour = button.Text.GetTextColor and { button.Text:GetTextColor() } or {}
+        button.hcNativeTextColour = #colour >= 3 and colour or { 1, 0.82, 0, 1 }
+    end
     button.SetText = function(self, text)
         self.Text:SetText(text or "")
         self.text = text

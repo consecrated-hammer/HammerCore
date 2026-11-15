@@ -71,6 +71,13 @@ eq(HC.Copy.frame.hcPresentation,"blizzard","native report")
 HC.Quiz:Create()
 eq(HC.Quiz.frame.hcPresentation,"blizzard","native quiz")
 eq(HC.Quiz.frame.timer.texture,HC.Theme.NATIVE.progress,"native quiz progress")
+HC.Quiz.run={{question="Test",choices={"A","B","C","D"},correct=2}}
+HC.Quiz.index=0;HC.Quiz.score=0;HC.Quiz:Next();HC.Quiz:Answer(1)
+eq(HC.Quiz.frame.answers[2].hcNativeFeedbackRole,"accent","native quiz reveals correct answer")
+eq(HC.Quiz.frame.answers[1].hcNativeFeedbackRole,"danger","native quiz identifies wrong pick")
+HC.Quiz.index=0;HC.Quiz:Next()
+eq(HC.Quiz.frame.answers[2].hcNativeFeedback:IsShown(),false,"native verdict clears for next question")
+
 eq(_G.ConsecratedHammerWhatsNew,nil,"native news never registers the shared renderer")
 eq(saved.hammerCore.whatsNewSeen,"1.0.0","queued news is not marked shown")
 tick()
@@ -136,6 +143,26 @@ eq(N.WhatsNew.frame:IsShown(),true,"deferred manual notice opens")
 N.WhatsNew:Hide();tick()
 eq(N.WhatsNew.frame:IsShown(),false,"no duplicate automatic popup after manual display")
 eq(ConsecratedHammerWelcome.busy,0,"deferred notice releases once")
+
+-- Reopening a visible native window is idempotent, including combat.
+install();N,saved=load("Native",true);tick();combat=true
+local seen=saved.hammerCore.whatsNewSeen
+N.WhatsNew:Show()
+eq(N.WhatsNew.nativeRequest,nil,"manual repeat raises the existing visible notice")
+eq(saved.hammerCore.whatsNewSeen,seen,"repeated visible visit leaves seen record alone")
+-- A genuinely new lower-level request retains its accepted delivery on close.
+N.WhatsNew:RequestNative(N.WhatsNew:Section(N.WhatsNew:Releases()),false)
+N.WhatsNew:Hide()
+eq(N.WhatsNew.nativeRequest~=nil,true,"closing an old notice preserves a separately deferred request")
+combat=false;N.WhatsNew:TryShow()
+eq(N.WhatsNew.frame:IsShown(),true,"deferred request survives old-window close")
+N.WhatsNew:Hide()
+-- An ordinary manual display without a pending automatic notice is not consumption.
+N,saved=load("Third",true,{hammerCore={whatsNew=false,whatsNewSeen="1.0.0"}})
+saved.hammerCore.whatsNewSeen="1.0.0"
+N.WhatsNew:Show()
+eq(saved.hammerCore.whatsNewSeen,"1.0.0","standalone manual display preserves Modern seen semantics")
+N.WhatsNew:Hide()
 
 -- Opt-out while waiting drops the reservation without pretending a window was shown.
 install();N,saved=load("Native",true);saved.hammerCore.whatsNew=false;tick()
