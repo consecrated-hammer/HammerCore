@@ -262,6 +262,11 @@ function HC.DiagnosticReport()
         lines[#lines + 1] = "Style: " .. styleName(current) .. "; saved: " .. styleName(saved)
             .. (saved ~= current and "; reload to apply" or "")
     end
+    if HC.UpdateReminders then
+        lines[#lines + 1] = "Update reminders: " .. HC.UpdateReminders.status
+            .. (type(state.updateRelease) == "table" and HC.UpdateReminders.Parse(state.updateRelease.version)
+                and ("; newest stable heard " .. state.updateRelease.version) or "")
+    end
     if HC.WhatsNew and HC.WhatsNew.Enabled() then
         lines[#lines + 1] = "What's new: " .. (state.whatsNew == false and "off" or "on")
             .. ", last seen " .. tostring(state.whatsNewSeen or "none")

@@ -445,3 +445,13 @@ remain compatible and default to raw numeric units.
 ## Blizzard presentation preview
 
 Consumers may opt into the complete native-artwork preview with `presentation = "blizzard"` in their Init spec. It is fixed for the session and preserves saved theme choices. See [the presentation contract and artwork manifest](docs/BLIZZARD-PRESENTATION.md).
+
+### Stable-version update reminders
+
+Visibility > Updates > **Update reminders** shares the installed stable version
+with party/raid/guild peers and prints one chat line per login if a newer release
+is heard. It defaults on, uses each addon's existing settings scope, and is
+independent of startup chat and What's new. Turning it off stops both version
+sharing and reminders. Development/alpha/beta/test builds never participate.
+Recent newer versions are remembered for up to 72 hours; updating clears the
+reminder. See [the protocol and lifecycle](docs/update-reminders.md).
