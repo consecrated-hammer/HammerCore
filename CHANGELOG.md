@@ -7,6 +7,10 @@ and HammerCore uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.5] - 2026-11-16
+
+- Stable-only peer version announcements and one-line update reminders, with a Visibility switch. Test builds stay quiet.
+
 ## [0.5.3] - 2026-11-15
 
 - Make slider values editable, with Enter/focus-loss commit, Escape cancellation, range and step validation.

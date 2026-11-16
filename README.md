@@ -441,3 +441,13 @@ to the slider range and step. Half-column cells use a shorter track. Optional
 last argument `inputScale` keeps display units consistent while editing: use
 `100` for a percentage formatter backed by a 0..1 value. Existing callers
 remain compatible and default to raw numeric units.
+
+### Stable-version update reminders
+
+Visibility > Updates > **Update reminders** shares the installed stable version
+with party/raid/guild peers and prints one chat line per login if a newer release
+is heard. It defaults on, uses each addon's existing settings scope, and is
+independent of startup chat and What's new. Turning it off stops both version
+sharing and reminders. Development/alpha/beta/test builds never participate.
+Recent newer versions are remembered for up to 72 hours; updating clears the
+reminder. See [the protocol and lifecycle](docs/update-reminders.md).
