@@ -30,8 +30,12 @@ end
 do
     local HC = addon("Retail", "PRIEST", "Human")
     local seen, ids = {}, {}
-    local categories = { lore = true, geography = true, class = true, race = true,
-        hallowsend = true, bossquotes = true, lastwords = true, murlocs = true, goblins = true, items = true }
+    local categories = {}
+    local manifest = assert(io.open("src/HammerCore.xml"))
+    for category in manifest:read("*a"):gmatch('<Script file="Quiz_([a-z]+)%.lua"/>') do
+        categories[category] = true
+    end
+    manifest:close()
     equal(#HC.QUIZ >= 1000, true, "the expanded library loads category files")
     for index, entry in ipairs(HC.QUIZ) do
         local where = "question " .. index .. " (" .. tostring(entry[1]) .. ")"

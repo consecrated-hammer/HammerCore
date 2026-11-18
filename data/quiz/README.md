@@ -17,6 +17,9 @@ Each row has a stable `id`, `question`, `correct`, three `wrong` answers, an
 explicit `era`, `difficulty`, `categories` and direct `source` URL. Optional
 `class` and `race` tokens preserve the solo quiz's character filters. Hosted
 Loreforge games use all selected topics regardless of the host's character.
+Questions in Smaller Holidays use IDs beginning with `holidays-<event>-`.
+Loreforge's `Seasons.lua` lists the event keys and uses them to put each
+question in season with its own holiday.
 
 `both` means shared lore or mechanics suitable for both supported clients.
 `classic` means **WoW Forever**, not generic Classic or Wrath. `retail` also
@@ -38,21 +41,40 @@ adding distractors. Quote excerpts stay short; the generator caps cumulative
 quoted question text at 25 words per source page across all batches. Write
 questions in original wording rather than copying descriptions or tooltips.
 
-The 2026-10-24 bank contains 1,000 questions: 360 shared, 139 Forever-only and
-501 Retail-only; 692 easier and 308 hard. Category counts overlap:
+The 2026-11-19 bank contains 2,320 questions. There are 670 shared,
+182 Forever-only and 1,468 Retail-only. There are 1,530 easier questions
+and 790 hard questions. Category counts overlap.
 
 | Category | Total | Forever eligible | Retail eligible |
 | --- | ---: | ---: | ---: |
-| General lore | 432 | 210 | 399 |
-| Geography | 340 | 184 | 302 |
-| Classes and mechanics | 181 | 75 | 142 |
-| Races | 186 | 106 | 167 |
-| Boss quotes | 103 | 30 | 90 |
-| Hallow's End | 16 | 1 | 16 |
-| Famous Last Words | 39 | 1 | 38 |
-| Murlocs and Mischief | 21 | 9 | 21 |
-| Dubious Goblin Engineering | 34 | 8 | 32 |
-| Things You Probably Vendored | 59 | 11 | 51 |
+| General lore | 455 | 225 | 422 |
+| Geography | 399 | 209 | 361 |
+| Classes and mechanics | 183 | 75 | 144 |
+| Races | 194 | 107 | 175 |
+| Hallow's End | 66 | 6 | 61 |
+| Boss quotes | 132 | 36 | 119 |
+| Famous Last Words | 67 | 7 | 66 |
+| Murlocs and Mischief | 62 | 27 | 60 |
+| Dubious Goblin Engineering | 65 | 19 | 63 |
+| Things You Probably Vendored | 112 | 32 | 102 |
+| Mount Up | 69 | 9 | 69 |
+| Pets and Pet Battles | 117 | 19 | 117 |
+| Professions and Recipes | 65 | 39 | 49 |
+| Easter Eggs and Pop Culture | 68 | 14 | 68 |
+| Quests That Ruined Your Day | 53 | 14 | 43 |
+| Gnomes and Their Poor Decisions | 52 | 25 | 52 |
+| Dragons | 54 | 23 | 54 |
+| Hearth and Home | 55 | 29 | 55 |
+| Feast of Winter Veil | 53 | 24 | 53 |
+| Lunar Festival | 100 | 64 | 100 |
+| Love is in the Air | 53 | 2 | 53 |
+| Noblegarden | 88 | 7 | 88 |
+| Children's Week | 58 | 9 | 58 |
+| Midsummer Fire Festival | 53 | 5 | 51 |
+| Brewfest | 56 | 0 | 56 |
+| Pilgrim's Bounty | 77 | 0 | 77 |
+| Darkmoon Faire | 64 | 18 | 58 |
+| Smaller Holidays | 75 | 10 | 75 |
 
 Do not tag Headless Horseman dungeon mechanics as Forever content without
 evidence that Forever actually implements them. The shared Hallow's End entry

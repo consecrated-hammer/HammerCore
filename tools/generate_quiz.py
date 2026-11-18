@@ -14,7 +14,10 @@ LEDGER = ROOT / 'data/quiz/ids.txt'
 LEDGER_HEADER = ('# Every question ID that has shipped. Never remove or reuse a line: Loreforge\n'
                  '# picks the daily question from these IDs, so they must stay stable. Retire a\n'
                  '# bad question with "retired": true instead of deleting it.\n')
-CATEGORIES = {'lore', 'geography', 'class', 'race', 'hallowsend', 'bossquotes', 'lastwords', 'murlocs', 'goblins', 'items'}
+CATEGORIES = {'lore', 'geography', 'class', 'race', 'hallowsend', 'bossquotes', 'lastwords', 'murlocs', 'goblins', 'items',
+              'winterveil', 'lunar', 'loveair', 'noblegarden', 'childrensweek', 'midsummer', 'brewfest', 'pilgrims',
+              'darkmoon', 'holidays', 'mounts', 'pets', 'professions', 'eastereggs', 'badquests', 'gnomes', 'dragons',
+              'hearth'}
 CLASSES = set('WARRIOR PALADIN HUNTER ROGUE PRIEST DEATHKNIGHT SHAMAN MAGE WARLOCK MONK DRUID DEMONHUNTER EVOKER'.split())
 RACES = set('Human Dwarf NightElf Gnome Draenei Worgen Pandaren Orc Scourge Tauren Troll BloodElf Goblin VoidElf LightforgedDraenei DarkIronDwarf KulTiran Mechagnome Nightborne HighmountainTauren MagharOrc ZandalariTroll Vulpera Dracthyr EarthenDwarf'.split())
 
